@@ -1,0 +1,20 @@
+SELECT
+    PatientID,
+    Patientpk,
+    FacilityName,
+    SiteCode,
+    AdverseEvent,
+    AdverseEventStartDate,
+    AdverseEventEndDate,
+    Severity,
+    VisitDate,
+    EMR,
+    Project,
+    AdverseEventCause,
+    AdverseEventRegimen,
+    AdverseEventActionTaken,
+    AdverseEventClinicalOutcome,
+    AdverseEventIsPregnant,
+    CKV,
+    DateImported
+FROM [ODS].[dbo].[CT_AdverseEvents]

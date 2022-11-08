@@ -1,0 +1,21 @@
+SELECT
+    PatientID,
+    PatientPK,
+    FacilityName,
+    SiteCode,
+    ExitDescription,
+    ExitDate,
+    ExitReason,
+    Emr,
+    Project,
+    CKV,
+    TOVerified,
+    TOVerifiedDate,
+    ReEnrollmentDate,
+    ReasonForDeath,
+    SpecificDeathReason,
+    DeathDate,
+    EffectiveDiscontinuationDate,
+    DateImported,
+    PatientUID
+FROM ODS.[dbo].CT_PatientStatus
