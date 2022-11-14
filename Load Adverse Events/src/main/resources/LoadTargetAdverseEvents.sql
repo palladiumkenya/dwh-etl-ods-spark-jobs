@@ -1,1 +1,0 @@
-SELECT PatientID,Patientpk, SiteCode,AdverseEvent,AdverseEventStartDate,AdverseEventEndDate,Severity,VisitDate,EMR,Project,AdverseEventCause,AdverseEventRegimen,AdverseEventActionTaken,AdverseEventClinicalOutcome,AdverseEventIsPregnant,CKV,PatientUnique_ID,AdverseEventsUnique_ID,DateImported
