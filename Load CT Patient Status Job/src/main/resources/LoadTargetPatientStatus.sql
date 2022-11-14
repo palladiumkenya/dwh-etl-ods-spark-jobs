@@ -9,13 +9,13 @@ SELECT
     Emr,
     Project,
     CKV,
-    TOVerified,
-    TOVerifiedDate,
-    ReEnrollmentDate,
     ReasonForDeath,
     SpecificDeathReason,
     DeathDate,
     EffectiveDiscontinuationDate,
-    DateImported,
-    PatientUID
+    TOVerified,
+    TOVerifiedDate,
+    ReEnrollmentDate,
+    PatientUnique_ID,
+    PatientStatusUnique_ID
 FROM ODS.[dbo].CT_PatientStatus

@@ -1,4 +1,5 @@
-SELECT P.[PatientCccNumber] AS PatientID,
+SELECT
+    P.[PatientCccNumber] AS PatientID,
     P.[PatientPID] AS PatientPK,
     F.Name AS FacilityName,
     F.Code AS SiteCode
@@ -11,19 +12,21 @@ SELECT P.[PatientCccNumber] AS PatientID,
           WHEN 'HMIS' THEN 'Kenya HMIS II'
           ELSE P.[Project]
     END AS [Project]
-							,LTRIM(RTRIM(STR(F.Code)))+'-'+LTRIM(RTRIM(P.[PatientCccNumber])) +'-'+LTRIM(RTRIM(STR(P.[PatientPID]))) AS CKV--Previously PKV
-						  --,PS.[Voided] Voided
-						  --,PS.[Processed] Processed
-						  --,PS.[Created] Created
-						  ,PS.TOVerified TOVerified
-						,PS.TOVerifiedDate TOVerifiedDate
-						,PS.ReEnrollmentDate ReEnrollmentDate
 
-						,[ReasonForDeath]
-						,[SpecificDeathReason]
-						,Cast([DeathDate] as Date)[DeathDate]
-						,EffectiveDiscontinuationDate
-
+-- 						  ,PS.[Voided] Voided
+-- 						  ,PS.[Processed] Processed
+-- 						  ,PS.[Created] Created
+						  ,LTRIM(RTRIM(STR(F.Code)))+'-'+LTRIM(RTRIM(P.[PatientCccNumber])) +'-'+LTRIM(RTRIM(STR(P.[PatientPID]))) AS CKV,
+-- 						NULL AS PatientUID,
+						[ReasonForDeath],
+						[SpecificDeathReason],
+						Cast([DeathDate] as Date)[DeathDate],
+						EffectiveDiscontinuationDate,
+						PS.TOVerified TOVerified,
+						PS.TOVerifiedDate TOVerifiedDate,
+						PS.ReEnrollmentDate ReEnrollmentDate
+						,P.ID as PatientUnique_ID
+						,PS.ID as PatientStatusUnique_ID
 FROM [DWAPICentral].[dbo].[PatientExtract] P WITH (NoLock)
     INNER JOIN [DWAPICentral].[dbo].[PatientStatusExtract]PS WITH (NoLock)  ON PS.[PatientId]= P.ID AND PS.Voided=0
     INNER JOIN [DWAPICentral].[dbo].[Facility] F (NoLock)  ON P.[FacilityId] = F.Id AND F.Voided=0
