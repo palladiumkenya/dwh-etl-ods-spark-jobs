@@ -14,14 +14,14 @@ SELECT
     ProphylaxisType,
     Emr,
     Project,
-    DateImported,
-    CKV,
+--     DateImported,
     RegimenLine,
     RegimenChangedSwitched,
     RegimenChangeSwitchReason,
     StopRegimenReason,
     StopRegimenDate,
-    PatientUID,
-    DeletedFlag
+    CKV,
+    PatientUnique_ID,
+    PatientPharmacyUnique_ID
 FROM
     [ODS].[dbo].CT_PatientPharmacy
