@@ -108,15 +108,17 @@ public class LoadFacilities {
 
         Dataset<Row> finalUnmatchedDf = unmatchedFacilities.join(targetDataFrame,
                 (targetComparisonDf.col("MFL_Code").equalTo(unmatchedFacilities.col("UN_MFL_Code"))), "inner");
-        String finalUnmatchedColumns = Arrays.toString(finalUnmatchedDf.columns());
-        logger.info("Final Unmatched columns: " + finalUnmatchedColumns);
+//        String finalUnmatchedColumns = Arrays.toString(finalUnmatchedDf.columns());
+//        logger.info("Final Unmatched columns: " + finalUnmatchedColumns);
 
         finalUnmatchedDf.createOrReplaceTempView("final_unmatched");
         sourceDataFrame.createOrReplaceTempView("source_dataframe");
 
-        Dataset<Row> mergeDf1 = session.sql("select MFL_Code, \"Facility Name\", County, SubCounty, Owner, Latitude, Longitude, SDP, EMR, \"EMR Status\", \"HTS Use\", \"HTS Deployment\", \"HTS Status\", \"IL Status\", BOOLEAN(\"Registration IE\"), BOOLEAN(\"Pharmacy IE\"), mlab, Ushauri, Nishauri, OVC, OTZ, PrEP, 3PM, AIR, KP, MCH, TB,BOOLEAN(\"Lab Manifest\"), TIMESTAMP(\"Date Added\"),TIMESTAMP (\"Date Updated\") from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select MFL_Code, \"Facility Name\", County, SubCounty, Owner, Latitude, Longitude, SDP, EMR, \"EMR Status\", \"HTS Use\", \"HTS Deployment\", \"HTS Status\", \"IL Status\", BOOLEAN(\"Registration IE\"), BOOLEAN(\"Pharmacy IE\"), mlab, Ushauri, Nishauri, OVC, OTZ, PrEP, 3PM, AIR, KP, MCH, TB, BOOLEAN(\"Lab Manifest\"), TIMESTAMP(\"Date Added\") , TIMESTAMP (\"Date Updated\") from source_dataframe");
+        Dataset<Row> mergeDf1 = session.sql("select MFL_Code, \"Facility Name\", County, SubCounty, Owner, Latitude, Longitude, SDP, EMR, \"EMR Status\", \"HTS Use\", \"HTS Deployment\", \"HTS Status\", \"IL Status\", BOOLEAN(\"Registration IE\"), BOOLEAN(\"Pharmacy IE\"), mlab, Ushauri, Nishauri, OVC, OTZ, PrEP, 3PM, AIR, KP, MCH, TB,\"Lab Manifest\" from final_unmatched");
+        Dataset<Row> mergeDf2 = session.sql("select MFL_Code, \"Facility Name\", County, SubCounty, Owner, Latitude, Longitude, SDP, EMR, \"EMR Status\", \"HTS Use\", \"HTS Deployment\", \"HTS Status\", \"IL Status\", BOOLEAN(\"Registration IE\"), BOOLEAN(\"Pharmacy IE\"), STRING(mlab), STRING(Ushauri), STRING(Nishauri), STRING(OVC), STRING(OTZ), STRING(PrEP), STRING(3PM), STRING(AIR), STRING(KP), STRING(MCH), STRING(TB), STRING(\"Lab Manifest\") from source_dataframe");
 
+        mergeDf1.printSchema();
+        mergeDf2.printSchema();
         // Union all records together
         Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
         dfMergeFinal
