@@ -13,8 +13,10 @@ END AS [Severity] ,
 							[VisitDate],
 							PA.[EMR], PA.[Project], [AdverseEventCause], [AdverseEventRegimen],
 							[AdverseEventActionTaken],[AdverseEventClinicalOutcome], [AdverseEventIsPregnant],
-							LTRIM(RTRIM(STR(F.Code)))+'-'+LTRIM(RTRIM(P.[PatientCccNumber])) +'-'+LTRIM(RTRIM(STR(P.[PatientPID]))) AS CKV
-
+							LTRIM(RTRIM(STR(F.Code)))+'-'+LTRIM(RTRIM(P.[PatientCccNumber])) +'-'+LTRIM(RTRIM(STR(P.[PatientPID]))) AS CKV,
+							GETDATE() AS dateimported,
+							P.ID as PatientUnique_ID,
+							PA.ID as AdverseEventsUnique_ID
 					FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
 					INNER JOIN [DWAPICentral].[dbo].PatientAdverseEventExtract(NoLock) PA ON PA.[PatientId]= P.ID AND PA.Voided=0
 					INNER JOIN [DWAPICentral].[dbo].[Facility](NoLock) F ON P.[FacilityId] = F.Id AND F.Voided=0
