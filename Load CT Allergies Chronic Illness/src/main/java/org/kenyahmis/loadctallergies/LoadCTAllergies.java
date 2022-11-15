@@ -6,9 +6,12 @@ import org.apache.spark.sql.*;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.Date;
+import java.time.LocalDate;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -49,6 +52,58 @@ public class LoadCTAllergies {
                 .load();
 
         sourceDataFrame.persist(StorageLevel.DISK_ONLY());
+
+        Dataset<Row> lookupChronicIllnessDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.chronicIllness"))
+                .load();
+        Dataset<Row> lookupAllergyCausativeAgentDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.allergyCausativeAgent"))
+                .load();
+        Dataset<Row> lookupAllergicReactionDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.allergicReaction"))
+                .load();
+
+        // Clean source values
+        sourceDataFrame = sourceDataFrame
+                .withColumn("ChronicOnsetDate", when(col("ChronicOnsetDate").lt(lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .or(col("ChronicOnsetDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("ChronicOnsetDate")))
+                .withColumn("AllergySeverity", when(col("AllergySeverity").equalTo("Fatal"), "Fatal")
+                        .when(col("AllergySeverity").isin("Mild|Mild|Mild", "Mild|Mild", "Mild"), "Mild")
+                        .when(col("AllergySeverity").isin("Moderate|Moderate", "Moderate"), "Moderate")
+                        .when(col("AllergySeverity").equalTo("Severe"), "Severe")
+                        .when(col("AllergySeverity").isin("Unknown", "Moderate|Mild"), "Unknown")
+                        .otherwise(col("AllergySeverity")));
+
+        // Set values from lookup tables
+        sourceDataFrame = sourceDataFrame
+                .join(lookupChronicIllnessDf, sourceDataFrame.col("ChronicIllness")
+                        .equalTo(lookupChronicIllnessDf.col("source_name")), "left")
+                .join(lookupAllergyCausativeAgentDf, sourceDataFrame.col("AllergyCausativeAgent")
+                        .equalTo(lookupAllergyCausativeAgentDf.col("source_name")), "left")
+                .join(lookupAllergicReactionDf, sourceDataFrame.col("AllergicReaction")
+                        .equalTo(lookupAllergicReactionDf.col("source_name")), "left")
+                .withColumn("ChronicIllness", when(lookupChronicIllnessDf.col("target_name").isNotNull(), lookupChronicIllnessDf.col("target_name"))
+                        .otherwise(col("ChronicIllness")))
+                .withColumn("AllergyCausativeAgent", when(lookupAllergyCausativeAgentDf.col("target_name").isNotNull(), lookupAllergyCausativeAgentDf.col("target_name"))
+                        .otherwise(col("AllergyCausativeAgent")))
+                .withColumn("AllergicReaction", when(lookupAllergicReactionDf.col("target_name").isNotNull(), lookupAllergicReactionDf.col("target_name"))
+                        .otherwise(col("AllergicReaction")));
         logger.info("Loading target ct allergies data frame");
         Dataset<Row> targetDataFrame = session.read()
                 .format("jdbc")
