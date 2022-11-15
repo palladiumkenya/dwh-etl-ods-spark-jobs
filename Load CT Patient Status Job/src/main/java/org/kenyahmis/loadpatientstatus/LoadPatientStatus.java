@@ -62,9 +62,9 @@ public class LoadPatientStatus {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
-        sourceDf = sourceDf
-                .withColumn("DateImported", lit(null).cast(DataTypes.DateType))
-                .withColumn("PatientUID", lit(null));
+//        sourceDf = sourceDf
+//                .withColumn("DateImported", lit(null).cast(DataTypes.DateType))
+//                .withColumn("PatientUID", lit(null));
 
         sourceDf.printSchema();
 

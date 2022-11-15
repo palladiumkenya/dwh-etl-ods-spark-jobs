@@ -63,9 +63,9 @@ public class LoadPatientPharmacy {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
-        sourceDf = sourceDf
-                .withColumn("PatientUID", lit(null))
-                .withColumn("DeletedFlag", lit(null).cast(DataTypes.BooleanType));
+//        sourceDf = sourceDf
+//                .withColumn("PatientUID", lit(null))
+//                .withColumn("DeletedFlag", lit(null).cast(DataTypes.BooleanType));
 
         sourceDf.printSchema();
 
@@ -78,6 +78,7 @@ public class LoadPatientPharmacy {
                 .option("driver", rtConfig.get("spark.sink.driver"))
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
+                .option("numpartitions", rtConfig.get("spark.sink.numpartitions"))
                 .option("dbtable", "(" + targetQuery + ") pvt")
                 .load();
 
