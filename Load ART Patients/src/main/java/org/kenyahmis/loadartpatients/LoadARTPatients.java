@@ -11,11 +11,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.Date;
+import java.time.LocalDate;
 
-import static org.apache.spark.sql.functions.lit;
+import static org.apache.spark.sql.functions.*;
 
 public class LoadARTPatients {
     private static final Logger logger = LoggerFactory.getLogger(LoadARTPatients.class);
+
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load ART Patients");
@@ -48,8 +51,101 @@ public class LoadARTPatients {
                 .option("dbtable", "(" + sourceQuery + ") pv")
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
-
         sourceDf.persist(StorageLevel.DISK_ONLY());
+
+        Dataset<Row> lookupExitReasonDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.exitReason"))
+                .load();
+        Dataset<Row> lookupRegimenDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.regimen"))
+                .load();
+
+        Dataset previousRegimenLookup = lookupRegimenDf.alias("previous_regimen_lookup");
+        Dataset lastRegimenLookup = lookupRegimenDf.alias("last_regimen_lookup");
+        Dataset startRegimenLookup = lookupRegimenDf.alias("start_regimen_lookup");
+
+
+        Dataset<Row> lookupPatientSourceDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.regimen"))
+                .load();
+
+        // clean source art records
+        sourceDf = sourceDf
+                .withColumn("DOB", when(col("DOB").lt(lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .or(col("DOB").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("DOB")))
+                .withColumn("StartARTDate", when(col("StartARTDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("StartARTDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("StartARTDate")))
+                .withColumn("StartARTAtThisFacility", when(col("StartARTAtThisFacility").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("StartARTAtThisFacility").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("StartARTAtThisFacility")))
+                .withColumn("LastARTDate", when(col("LastARTDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("LastARTDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("LastARTDate")))
+                .withColumn("RegistrationDate", when(col("RegistrationDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("RegistrationDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("RegistrationDate")))
+                .withColumn("PreviousARTStartDate", when(col("PreviousARTStartDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("PreviousARTStartDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("PreviousARTStartDate")))
+                .withColumn("ExpectedReturn", when(col("ExpectedReturn").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("ExpectedReturn").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("ExpectedReturn")))
+                .withColumn("LastVisit", when(col("LastVisit").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("LastVisit").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("LastVisit")))
+                .withColumn("ExitDate", when(col("ExitDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("ExitDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("ExitDate")))
+                .withColumn("Emr", when(col("Emr").equalTo("Open Medical Records System - OpenMRS"), "OpenMRS")
+                        .when(col("Emr").equalTo("Ampath AMRS"), "AMRS")
+                        .otherwise(col("Emr")))
+                .withColumn("Project", when(col("Project").isin("Ampathplus", "AMPATH"), "Ampath Plus")
+                        .when(col("Project").isin("UCSF Clinical Kisumu", "CHAP Uzima", "DREAM", "IRDO"), "Kenya HMIS II")
+                        .otherwise(col("Project")))
+                .withColumn("Duration", when(col("Duration").cast(DataTypes.FloatType).lt(lit(0)), lit(999))
+                        .otherwise(col("Duration")))
+                .withColumn("AgeARTStart", when(col("AgeARTStart").lt(lit(0))
+                        .or(col("AgeARTStart").gt(lit(120))), lit(999))
+                        .otherwise(col("AgeARTStart")))
+                .withColumn("AgeLastVisit", when(col("AgeLastVisit").lt(lit(0))
+                        .or(col("AgeLastVisit").gt(lit(120))), lit(999))
+                        .otherwise(col("AgeLastVisit")))
+                .withColumn("AgeEnrollment", when(col("AgeEnrollment").lt(lit(0))
+                        .or(col("AgeEnrollment").gt(lit(120))), lit(999))
+                        .otherwise(col("AgeEnrollment")));
+
+        // Add values from lookup tables
+        sourceDf = sourceDf
+                .join(lookupExitReasonDf, sourceDf.col("ExitReason").equalTo(lookupExitReasonDf.col("source_name")), "left")
+                .join(previousRegimenLookup, sourceDf.col("PreviousARTRegimen").equalTo(lookupRegimenDf.col("previous_lookup_regimen.source_name")), "left")
+                .join(startRegimenLookup, sourceDf.col("StartRegimen").equalTo(lookupRegimenDf.col("start_lookup_regimen.source_name")), "left")
+                .join(lastRegimenLookup, sourceDf.col("LastRegimen").equalTo(lookupRegimenDf.col("last_lookup_regimen.source_name")), "left")
+                .join(lookupPatientSourceDf, sourceDf.col("PatientSource").equalTo(lookupPatientSourceDf.col("source_name")), "left")
+                .withColumn("ExitReason", when(lookupExitReasonDf.col("target_name").isNotNull(), lookupExitReasonDf.col("target_name"))
+                        .otherwise(col("ExitReason")))
+                .withColumn("PreviousARTRegimen", when(col("previous_lookup_regimen.target_name").isNotNull(), col("previous_lookup_regimen.target_name"))
+                        .otherwise(col("ExitReason")))
+                .withColumn("StartRegimen", when(col("start_lookup_regimen.target_name").isNotNull(), col("start_lookup_regimen.target_name"))
+                        .otherwise(col("StartRegimen")))
+                .withColumn("LastRegimen", when(col("last_lookup_regimen.target_name").isNotNull(), col("last_lookup_regimen.target_name"))
+                        .otherwise(col("LastRegimen")));
 
         logger.info("Loading target ART Patients");
         Dataset<Row> targetDf = session.read()
