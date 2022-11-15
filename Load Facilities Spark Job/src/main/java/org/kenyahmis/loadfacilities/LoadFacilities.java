@@ -1,6 +1,5 @@
 package org.kenyahmis.loadfacilities;
 
-import com.mysql.cj.jdbc.MysqlDataSource;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
@@ -11,12 +10,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.Arrays;
-
-import static org.apache.spark.sql.functions.*;
 
 public class LoadFacilities {
     private static final Logger logger = LoggerFactory.getLogger(LoadFacilities.class);

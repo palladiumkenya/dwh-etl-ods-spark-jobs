@@ -25,9 +25,7 @@ public class LoadARTPatients {
         RuntimeConfig rtConfig = session.conf();
 
         final String sourceQueryFileName = "LoadSourceARTPatients.sql";
-        final String targetQueryFileName = "LoadTargetARTPatients.sql";
         String sourceQuery;
-        String targetQuery;
         InputStream inputStream = LoadARTPatients.class.getClassLoader().getResourceAsStream(sourceQueryFileName);
         if (inputStream == null) {
             logger.error(sourceQueryFileName + " not found");
@@ -40,17 +38,6 @@ public class LoadARTPatients {
             return;
         }
 
-        InputStream targetQueryInputStream = LoadARTPatients.class.getClassLoader().getResourceAsStream(targetQueryFileName);
-        if (targetQueryInputStream == null) {
-            logger.error(targetQueryFileName + " not found");
-            return;
-        }
-        try {
-            targetQuery = IOUtils.toString(targetQueryInputStream, Charset.defaultCharset());
-        } catch (IOException e) {
-            logger.error("Failed to load target ART patients query from file", e);
-            return;
-        }
         logger.info("Loading source ART Patients");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
@@ -62,13 +49,7 @@ public class LoadARTPatients {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
-        sourceDf = sourceDf.withColumn("PreviousARTRegimen_Orig", lit(null))
-                .withColumn("StartRegimen_Orig", lit(null))
-                .withColumn("LastRegimen_Orig", lit(null))
-                .withColumn("DateImported", lit(null).cast(DataTypes.DateType));
-
-        sourceDf.printSchema();
-        sourceDf.persist(StorageLevel.MEMORY_AND_DISK());
+        sourceDf.persist(StorageLevel.DISK_ONLY());
 
         logger.info("Loading target ART Patients");
         Dataset<Row> targetDf = session.read()
@@ -77,21 +58,47 @@ public class LoadARTPatients {
                 .option("driver", rtConfig.get("spark.sink.driver"))
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", "(" + targetQuery + ") pvt")
+                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
                 .load();
+        targetDf.persist(StorageLevel.DISK_ONLY());
 
-        targetDf.persist(StorageLevel.MEMORY_AND_DISK());
-        targetDf.printSchema();
+        sourceDf.createOrReplaceTempView("source_patients");
+        targetDf.createOrReplaceTempView("target_patients");
 
         // Find rows in target table unmatched in source table
-        Dataset<Row> unmatchedDf = targetDf.except(sourceDf);
+        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patients t LEFT ANTI JOIN source_patients s ON s.PatientPK <=> t.PatientPK AND" +
+                " s.SiteCode <=> t.SiteCode");
 
-        // Will "update" all rows matched, insert new rows and maintain any unmatched rows
-        Dataset<Row> finalMergeDf = sourceDf.unionAll(unmatchedDf);
-        logger.info("Writing final dataframe to target table");
+        long unmatchedVisitCount = unmatchedFromJoinDf.count();
+        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
+
+        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+
+        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT" +
+                " PatientID,PatientPK,SiteCode,FacilityName,AgeEnrollment," +
+                "AgeARTStart,AgeLastVisit,RegistrationDate,PatientSource,Gender,StartARTDate,PreviousARTStartDate," +
+                "PreviousARTRegimen,StartARTAtThisFacility,StartRegimen,StartRegimenLine,LastARTDate,LastRegimen," +
+                "LastRegimenLine,Duration,ExpectedReturn,Provider,LastVisit,ExitReason,ExitDate,Emr," +
+                "Project,DOB,CKV,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf" +
+                "FROM final_unmatched");
+
+        Dataset<Row> sourceMergeDf2 = session.sql("SELECT" +
+                " PatientID,PatientPK,SiteCode,FacilityName,AgeEnrollment," +
+                "AgeARTStart,AgeLastVisit,RegistrationDate,PatientSource,Gender,StartARTDate,PreviousARTStartDate," +
+                "PreviousARTRegimen,StartARTAtThisFacility,StartRegimen,StartRegimenLine,LastARTDate,LastRegimen," +
+                "LastRegimenLine,Duration,ExpectedReturn,Provider,LastVisit,ExitReason,ExitDate,Emr," +
+                "Project,DOB,CKV,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf" +
+                "FROM source_patients");
+
+        sourceDf.printSchema();
+        unmatchedMergeDf1.printSchema();
+
+        Dataset<Row> dfMergeFinal = unmatchedMergeDf1.union(sourceMergeDf2);
+        long mergedFinalCount = dfMergeFinal.count();
+        logger.info("Merged final count: " + mergedFinalCount);
+
         // Write to target table
-        finalMergeDf
-                .repartition(10)
+        dfMergeFinal
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
