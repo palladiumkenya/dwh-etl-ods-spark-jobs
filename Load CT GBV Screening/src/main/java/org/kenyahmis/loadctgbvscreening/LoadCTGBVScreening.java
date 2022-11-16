@@ -9,9 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.util.Arrays;
-
-import static org.apache.spark.sql.functions.col;
 
 public class LoadCTGBVScreening {
     private static final Logger logger = LoggerFactory.getLogger(LoadCTGBVScreening.class);
@@ -22,7 +19,6 @@ public class LoadCTGBVScreening {
                 .config(conf)
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
-        final int targetPartitions = 10;
 
         final String queryFileName = "LoadCTGBVScreening.sql";
         String query;
@@ -49,7 +45,7 @@ public class LoadCTGBVScreening {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
-        sourceDataFrame.persist(StorageLevel.MEMORY_AND_DISK());
+        sourceDataFrame.persist(StorageLevel.DISK_ONLY());
         logger.info("Loading target ct gbv data frame");
         Dataset<Row> targetDataFrame = session.read()
                 .format("jdbc")
@@ -60,49 +56,30 @@ public class LoadCTGBVScreening {
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
                 .option("numpartitions", rtConfig.get("spark.sink.numpartitions"))
                 .load();
-        targetDataFrame.persist(StorageLevel.MEMORY_AND_DISK());
+        targetDataFrame.persist(StorageLevel.DISK_ONLY());
 
-        // source comparison data frame
-        Dataset<Row> sourceComparisonDf = sourceDataFrame.select(col("PatientID"), col("PatientPK"),
-                col("SiteCode"), col("VisitID"), col("VisitDate"));
+        sourceDataFrame.createOrReplaceTempView("source_gbv_screening");
+        targetDataFrame.createOrReplaceTempView("target_gbv_screening");
 
-        // target comparison data frame
-        Dataset<Row> targetComparisonDf = targetDataFrame.select(col("PatientID"), col("PatientPK"),
-                col("SiteCode"), col("VisitID"), col("VisitDate"));
+        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_gbv_screening t LEFT ANTI JOIN source_gbv_screening s ON s.SiteCode <=> t.SiteCode AND" +
+                " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
-        // Records in target data frame and not in source data frame
-        Dataset<Row> unmatchedFacilities = targetComparisonDf.except(sourceComparisonDf)
-                .withColumnRenamed("PatientID", "UN_PatientID")
-                .withColumnRenamed("PatientPK", "UN_PatientPK")
-                .withColumnRenamed("SiteCode", "UN_SiteCode")
-                .withColumnRenamed("VisitID", "UN_VisitID")
-                .withColumnRenamed("VisitDate", "UN_VisitDate");
+        long unmatchedVisitCount = unmatchedFromJoinDf.count();
+        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
+        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
-        Dataset<Row> finalUnmatchedDf = unmatchedFacilities.join(targetDataFrame,
-                targetComparisonDf.col("PatientID").equalTo(unmatchedFacilities.col("UN_PatientID")).and(
-                        targetComparisonDf.col("PatientPK").equalTo(unmatchedFacilities.col("UN_PatientPK"))
-                ).and(
-                        targetComparisonDf.col("SiteCode").equalTo(unmatchedFacilities.col("UN_SiteCode"))
-                ).and(
-                        targetComparisonDf.col("VisitID").equalTo(unmatchedFacilities.col("UN_VisitID"))
-                ).and(
-                        targetComparisonDf.col("VisitDate").equalTo(unmatchedFacilities.col("UN_VisitDate"))
-                ), "inner");
-
-        finalUnmatchedDf.createOrReplaceTempView("final_unmatched");
-        sourceDataFrame.createOrReplaceTempView("source_dataframe");
-
-        String sourceColumns = Arrays.toString(sourceDataFrame.columns());
-        logger.info("Source columns: " + sourceColumns);
 
         Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, IPV, PhysicalIPV, EmotionalIPV, SexualIPV, IPVRelationship, DateImported, CKV from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, IPV, PhysicalIPV, EmotionalIPV, SexualIPV, IPVRelationship, DateImported, CKV from source_dataframe");
+        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, IPV, PhysicalIPV, EmotionalIPV, SexualIPV, IPVRelationship, DateImported, CKV from source_gbv_screening");
+
+        mergeDf2.printSchema();
+        mergeDf1.printSchema();
 
         // Union all records together
         Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
-        dfMergeFinal.printSchema();
+        long mergedFinalCount = dfMergeFinal.count();
+        logger.info("Merged final count: " + mergedFinalCount);
         dfMergeFinal
-                .repartition(targetPartitions)
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
