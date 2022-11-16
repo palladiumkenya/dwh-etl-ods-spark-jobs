@@ -10,6 +10,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.Date;
+import java.time.LocalDate;
+
+import static org.apache.spark.sql.functions.*;
 
 public class LoadCTCovid {
     private static final Logger logger = LoggerFactory.getLogger(LoadCTCovid.class);
@@ -47,7 +51,23 @@ public class LoadCTCovid {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
+        sourceDataFrame = sourceDataFrame
+                .withColumn("Covid19AssessmentDate", when(col("Covid19AssessmentDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("Covid19AssessmentDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("Covid19AssessmentDate")))
+                .withColumn("DateGivenFirstDose", when(col("DateGivenFirstDose").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("DateGivenFirstDose").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("DateGivenFirstDose")))
+                .withColumn("DateGivenSecondDose", when(col("DateGivenSecondDose").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
+                        .or(col("DateGivenSecondDose").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("DateGivenSecondDose")))
+                .withColumn("VaccinationStatus", when(col("VaccinationStatus").equalTo("Fully - Details not Available"), "Fully Vaccinated")
+                        .when(col("VaccinationStatus").equalTo("Partial"), "Partially Vaccinated")
+                        .when(col("VaccinationStatus").equalTo("Partial - Details not Available"), "Partially Vaccinated")
+                        .otherwise(col("VaccinationStatus")));
+
         sourceDataFrame.persist(StorageLevel.DISK_ONLY());
+
         logger.info("Loading target ct covid data frame");
         Dataset<Row> targetDataFrame = session.read()
                 .format("jdbc")
