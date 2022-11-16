@@ -25,9 +25,7 @@ public class LoadPatientLabs {
         RuntimeConfig rtConfig = session.conf();
 
         final String sourceQueryFileName = "LoadSourceCTPatientLabs.sql";
-        final String targetQueryFileName = "LoadTargetCTPatientLabs.sql";
         String sourceVisitsQuery;
-        String targetQuery;
         InputStream inputStream = LoadPatientLabs.class.getClassLoader().getResourceAsStream(sourceQueryFileName);
         if (inputStream == null) {
             logger.error(sourceQueryFileName + " not found");
@@ -40,18 +38,7 @@ public class LoadPatientLabs {
             return;
         }
 
-        InputStream targetQueryInputStream = LoadPatientLabs.class.getClassLoader().getResourceAsStream(targetQueryFileName);
-        if (targetQueryInputStream == null) {
-            logger.error(targetQueryFileName + " not found");
-            return;
-        }
-        try {
-            targetQuery = IOUtils.toString(targetQueryInputStream, Charset.defaultCharset());
-        } catch (IOException e) {
-            logger.error("Failed to load target CT patient labs from file", e);
-            return;
-        }
-        logger.info("Loading source CT patients");
+        logger.info("Loading source CT patient labs");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.source.url"))
@@ -61,15 +48,9 @@ public class LoadPatientLabs {
                 .option("dbtable", "(" + sourceVisitsQuery + ") pv")
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
-        sourceDf = sourceDf
-                .withColumn("FacilityID", lit(null))
-                .withColumn("SatelliteName", lit(null))
-                .withColumn("Processed", lit(null).cast(DataTypes.BooleanType))
-                .withColumn("BaselineTest", lit(null));
 
-        sourceDf.printSchema();
 
-        sourceDf.persist(StorageLevel.MEMORY_AND_DISK());
+        sourceDf.persist(StorageLevel.DISK_ONLY());
 
         logger.info("Loading target CT patient labs");
         Dataset<Row> targetDf = session.read()
@@ -78,22 +59,37 @@ public class LoadPatientLabs {
                 .option("driver", rtConfig.get("spark.sink.driver"))
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", "(" + targetQuery + ") pl")
+                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
                 .load();
 
-        targetDf.persist(StorageLevel.MEMORY_AND_DISK());
-        targetDf.printSchema();
+        targetDf.persist(StorageLevel.DISK_ONLY());
+        sourceDf.createOrReplaceTempView("source_patient_labs");
+        targetDf.createOrReplaceTempView("target_patient_labs");
 
-        // Find rows in target table unmatched in source table
-        Dataset<Row> unmatchedDf = targetDf.except(sourceDf);
+        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patient_labs t LEFT ANTI JOIN source_patient_labs s ON s.SiteCode <=> t.SiteCode AND" +
+                " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
+
+        long unmatchedVisitCount = unmatchedFromJoinDf.count();
+        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
+        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+
+        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT PatientID,PatientPK,SiteCode,VisitId,OrderedByDate,ReportedByDate," +
+                "       TestName,EnrollmentTest,TestResult,Emr,Project,DateImported,Reason," +
+                "       Created,CKV,DateSampleTaken,SampleType from final_unmatched");
+        Dataset<Row> sourceMergeDf2 = session.sql("SELECT PatientID,PatientPK,SiteCode,VisitId,OrderedByDate,ReportedByDate," +
+                "       TestName,EnrollmentTest,TestResult,Emr,Project,DateImported,Reason," +
+                "       Created,CKV,DateSampleTaken,SampleType from source_patient_labs");
+
+        sourceMergeDf2.printSchema();
+        unmatchedMergeDf1.printSchema();
 
         // Will "update" all rows matched, insert new rows and maintain any unmatched rows
-        Dataset<Row> finalMergeDf = sourceDf.unionAll(unmatchedDf);
-
+        Dataset<Row> finalMergeDf = unmatchedMergeDf1.union(sourceMergeDf2);
+        long mergedFinalCount = finalMergeDf.count();
+        logger.info("Merged final count: " + mergedFinalCount);
         logger.info("Writing final dataframe to target table");
         // Write to target table
         finalMergeDf
-                .repartition(10)
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
