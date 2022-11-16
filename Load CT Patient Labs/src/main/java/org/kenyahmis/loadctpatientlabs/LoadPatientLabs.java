@@ -7,11 +7,14 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.Date;
+import java.time.LocalDate;
 
-import static org.apache.spark.sql.functions.lit;
+import static org.apache.spark.sql.functions.*;
 
 public class LoadPatientLabs {
     private static final Logger logger = LoggerFactory.getLogger(LoadPatientLabs.class);
@@ -49,6 +52,34 @@ public class LoadPatientLabs {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
+        Dataset<Row> lookupTestNamesDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.testNames"))
+                .load();
+
+        sourceDf = sourceDf
+                .withColumn("ReportedbyDate", when(col("ReportedbyDate").lt(lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .or(col("ReportedbyDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("ReportedbyDate")))
+                .withColumn("OrderedbyDate", when(col("OrderedbyDate").lt(lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .or(col("OrderedbyDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("OrderedbyDate")))
+                .withColumn("Emr", when(col("Emr").equalTo("Open Medical Records System - OpenMRS"), "OpenMRS")
+                        .when(col("Emr").equalTo("Ampath AMRS"), "AMRS")
+                        .otherwise(col("Emr")))
+                .withColumn("TestResult",when(col("TestResult").cast(DataTypes.FloatType).lt(lit(0)), "Viral Load")
+                .otherwise(col("TestResult")));
+
+        // set values from lookup tables
+        sourceDf = sourceDf
+                .join(lookupTestNamesDf, sourceDf.col("TestName")
+                        .equalTo(lookupTestNamesDf.col("source_name")), "left")
+                .withColumn("TestName", when(lookupTestNamesDf.col("target_name").isNotNull(), lookupTestNamesDf.col("target_name"))
+                        .otherwise(col("TestName")));
 
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
