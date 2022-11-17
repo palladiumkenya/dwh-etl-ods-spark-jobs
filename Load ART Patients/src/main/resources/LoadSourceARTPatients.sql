@@ -13,6 +13,7 @@ SELECT  P.[PatientPID] AS PatientPK,P.[PatientCccNumber] AS PatientID, F.Name AS
 					,PA.[PreviousARTUse]
 					,PA.[PreviousARTPurpose]
 					,PA.[DateLastUsed]
+                    ,GETDATE () AS DateAsOf
 
 FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
     INNER JOIN [DWAPICentral].[dbo].[PatientArtExtract](NoLock) PA ON PA.[PatientId]= P.ID AND PA.Voided=0

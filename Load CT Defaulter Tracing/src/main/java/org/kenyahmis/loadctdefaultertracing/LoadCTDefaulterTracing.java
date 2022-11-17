@@ -24,7 +24,6 @@ public class LoadCTDefaulterTracing {
                 .config(conf)
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
-        final int targetPartitions = 10;
 
         final String queryFileName = "LoadCTDefaulterTracing.sql";
         String query;
@@ -50,10 +49,9 @@ public class LoadCTDefaulterTracing {
                 .option("query", query)
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
-
-        sourceDataFrame.persist(StorageLevel.MEMORY_AND_DISK());
-//        sourceDataFrame.printSchema();
+        sourceDataFrame.persist(StorageLevel.DISK_ONLY());
         logger.info("Loading target ct defaulter tracing data frame");
+
         Dataset<Row> targetDataFrame = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -63,50 +61,29 @@ public class LoadCTDefaulterTracing {
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
                 .option("numpartitions", rtConfig.get("spark.sink.numpartitions"))
                 .load();
-        targetDataFrame.persist(StorageLevel.MEMORY_AND_DISK());
+        targetDataFrame.persist(StorageLevel.DISK_ONLY());
 
-        // source comparison data frame
-        Dataset<Row> sourceComparisonDf = sourceDataFrame.select(col("PatientID"), col("PatientPK"),
-                col("SiteCode"), col("VisitID"), col("VisitDate"));
+        sourceDataFrame.createOrReplaceTempView("source_defaulter_tracing");
+        targetDataFrame.createOrReplaceTempView("target_defaulter_tracing");
 
-        // target comparison data frame
-        Dataset<Row> targetComparisonDf = targetDataFrame.select(col("PatientID"), col("PatientPK"),
-                col("SiteCode"), col("VisitID"), col("VisitDate"));
+        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_defaulter_tracing t LEFT ANTI JOIN source_defaulter_tracing s ON s.SiteCode <=> t.SiteCode AND" +
+                " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
-        // Records in target data frame and not in source data frame
-        Dataset<Row> unmatchedFacilities = targetComparisonDf.except(sourceComparisonDf)
-                .withColumnRenamed("PatientID", "UN_PatientID")
-                .withColumnRenamed("PatientPK", "UN_PatientPK")
-                .withColumnRenamed("SiteCode", "UN_SiteCode")
-                .withColumnRenamed("VisitID", "UN_VisitID")
-                .withColumnRenamed("VisitDate", "UN_VisitDate");
-
-        unmatchedFacilities.printSchema();
-        Dataset<Row> finalUnmatchedDf = unmatchedFacilities.join(targetDataFrame,
-                targetComparisonDf.col("PatientID").equalTo(unmatchedFacilities.col("UN_PatientID")).and(
-                        targetComparisonDf.col("PatientPK").equalTo(unmatchedFacilities.col("UN_PatientPK"))
-                ).and(
-                        targetComparisonDf.col("SiteCode").equalTo(unmatchedFacilities.col("UN_SiteCode"))
-                ).and(
-                        targetComparisonDf.col("VisitID").equalTo(unmatchedFacilities.col("UN_VisitID"))
-                ).and(
-                        targetComparisonDf.col("VisitDate").equalTo(unmatchedFacilities.col("UN_VisitDate"))
-                ), "inner");
-
-        finalUnmatchedDf.createOrReplaceTempView("final_unmatched");
-        sourceDataFrame.createOrReplaceTempView("source_dataframe");
-
-        String sourceColumns = Arrays.toString(sourceDataFrame.columns());
-//        logger.info("Source columns: " + sourceColumns);
+        long unmatchedVisitCount = unmatchedFromJoinDf.count();
+        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
+        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
         Dataset<Row> mergeDf1 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID, VisitDate, EncounterId, TracingType, TracingOutcome, AttemptNumber, IsFinalTrace, TrueStatus, CauseOfDeath, Comments, BookingDate, CKV, DateImported from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID, VisitDate, EncounterId, TracingType, TracingOutcome, AttemptNumber, IsFinalTrace, TrueStatus, CauseOfDeath, Comments, BookingDate, CKV, DateImported from source_dataframe");
+        Dataset<Row> mergeDf2 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID, VisitDate, EncounterId, TracingType, TracingOutcome, AttemptNumber, IsFinalTrace, TrueStatus, CauseOfDeath, Comments, BookingDate, CKV, DateImported from source_defaulter_tracing");
+
+        mergeDf2.printSchema();
+        mergeDf1.printSchema();
 
         // Union all records together
         Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
-//        dfMergeFinal.printSchema();
+        long mergedFinalCount = dfMergeFinal.count();
+        logger.info("Merged final count: " + mergedFinalCount);
         dfMergeFinal
-                .repartition(targetPartitions)
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
