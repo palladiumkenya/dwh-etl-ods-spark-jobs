@@ -102,10 +102,13 @@ public class LoadPatientVisits {
                         .or(col("NextAppointmentDate").gt(lit(Date.valueOf(LocalDate.now().plusYears(1))))), lit(Date.valueOf(LocalDate.of(1900, 1, 1)))));
 
         // Set values from look up tables
-        sourceDf = sourceDf.join(familyPlanningDf, sourceDf.col("FamilyPlanningMethod").equalTo(familyPlanningDf.col("source_name")), "left")
-                .join(pwpDf, sourceDf.col("PwP").equalTo(pwpDf.col("source_name")))
-                .withColumn("FamilyPlanningMethod", familyPlanningDf.col("target_name"))
-                .withColumn("PwP", pwpDf.col("target_name"));
+        sourceDf = sourceDf
+                .join(familyPlanningDf, sourceDf.col("FamilyPlanningMethod").equalTo(familyPlanningDf.col("source_name")), "left")
+                .join(pwpDf, sourceDf.col("PwP").equalTo(pwpDf.col("source_name")), "left")
+                .withColumn("FamilyPlanningMethod", when(familyPlanningDf.col("target_name").isNotNull(), familyPlanningDf.col("target_name"))
+                        .otherwise(col("FamilyPlanningMethod")))
+                .withColumn("PwP", when(pwpDf.col("target_name").isNotNull(), pwpDf.col("target_name"))
+                        .otherwise(col("PwP")));
 
         logger.info("Loading target visits");
         Dataset<Row> targetDf = session.read()

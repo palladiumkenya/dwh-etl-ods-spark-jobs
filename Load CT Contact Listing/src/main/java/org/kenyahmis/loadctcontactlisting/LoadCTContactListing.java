@@ -10,9 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.util.Arrays;
 
-import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.*;
 
 public class LoadCTContactListing {
     private static final Logger logger = LoggerFactory.getLogger(LoadCTContactListing.class);
@@ -25,7 +24,6 @@ public class LoadCTContactListing {
                 .config(conf)
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
-        final int targetPartitions = 10;
 
         final String queryFileName = "LoadCTContactListing.sql";
         String query;
@@ -52,9 +50,31 @@ public class LoadCTContactListing {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
-        sourceDataFrame.persist(StorageLevel.MEMORY_AND_DISK());
-        sourceDataFrame.printSchema();
-        logger.info("Loading target ct ipt data frame");
+        sourceDataFrame.persist(StorageLevel.DISK_ONLY());
+
+        sourceDataFrame = sourceDataFrame
+                .withColumn("ContactAge", when(col("ContactAge").lt(lit(0))
+                        .or(col("ContactAge").gt(lit(120))), lit(999)))
+                .withColumn("ContactSex", when(col("ContactSex").equalTo("U"), "Undefined")
+                        .when(col("ContactSex").equalTo("M"), "Male")
+                        .when(col("ContactSex").equalTo("F"), "Female")
+                        .otherwise(col("ContactSex")))
+                .withColumn("RelationshipWithPatient", when(col("RelationshipWithPatient").isin("Daughter", "Son"), "Child")
+                        .when(col("RelationshipWithPatient").equalTo("Co-wife"), "Sexual Partner")
+                        .when(col("RelationshipWithPatient").equalTo("Select"), "OTHER")
+                        .when(col("RelationshipWithPatient").isin("undefined", "None"), "Undefined")
+                        .when(col("RelationshipWithPatient").equalTo("Nice"), "Niece")
+                        .otherwise(col("RelationshipWithPatient")))
+                .withColumn("IPVScreeningOutcome", when(col("IPVScreeningOutcome").equalTo("0"), "False")
+                        .when(col("IPVScreeningOutcome").equalTo("No"), "False")
+                        .when(col("IPVScreeningOutcome").equalTo("Yes"), "True")
+                        .when(col("IPVScreeningOutcome").isin("1065", "1066"), "OTHER")
+                        .otherwise(col("IPVScreeningOutcome")))
+                .withColumn("KnowledgeOfHivStatus", when(col("KnowledgeOfHivStatus").isin("Negative", "Yes", "Positive", "Exposed Infant", "Exposed", "664", "703"), "Yes")
+                        .when(col("KnowledgeOfHivStatus").isin("No", "Unknown", "1067", "0"), "No")
+                        .otherwise(col("KnowledgeOfHivStatus")));
+
+        logger.info("Loading target ct contact listing data frame");
         Dataset<Row> targetDataFrame = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -64,46 +84,28 @@ public class LoadCTContactListing {
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
                 .option("numpartitions", rtConfig.get("spark.sink.numpartitions"))
                 .load();
-        targetDataFrame.persist(StorageLevel.MEMORY_AND_DISK());
+        targetDataFrame.persist(StorageLevel.DISK_ONLY());
 
-        // source comparison data frame
-        Dataset<Row> sourceComparisonDf = sourceDataFrame.select(col("PatientID"), col("PatientPK"),
-                col("SiteCode"), col("ContactPatientPK"));
+        targetDataFrame.createOrReplaceTempView("target_listing");
+        sourceDataFrame.createOrReplaceTempView("source_listing");
 
-        // target comparison data frame
-        Dataset<Row> targetComparisonDf = targetDataFrame.select(col("PatientID"), col("PatientPK"),
-                col("SiteCode"), col("ContactPatientPK"));
+        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_listing t LEFT ANTI JOIN source_listing s ON s.SiteCode <=> t.SiteCode AND" +
+                " s.PatientPK <=> t.PatientPK AND s.AdverseEventsUnique_ID <=> t.AdverseEventsUnique_ID");
 
-        // Records in target data frame and not in source data frame
-        Dataset<Row> unmatchedFacilities = targetComparisonDf.except(sourceComparisonDf)
-                .withColumnRenamed("PatientID", "UN_PatientID")
-                .withColumnRenamed("PatientPK", "UN_PatientPK")
-                .withColumnRenamed("SiteCode", "UN_SiteCode")
-                .withColumnRenamed("ContactPatientPK", "UN_ContactPatientPK");
+        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
-        Dataset<Row> finalUnmatchedDf = unmatchedFacilities.join(targetDataFrame,
-                targetComparisonDf.col("PatientID").equalTo(unmatchedFacilities.col("UN_PatientID")).and(
-                        targetComparisonDf.col("PatientPK").equalTo(unmatchedFacilities.col("UN_PatientPK"))
-                ).and(
-                        targetComparisonDf.col("SiteCode").equalTo(unmatchedFacilities.col("UN_SiteCode"))
-                ).and(
-                        targetComparisonDf.col("ContactPatientPK").equalTo(unmatchedFacilities.col("UN_ContactPatientPK"))
-                ), "inner");
-
-        finalUnmatchedDf.createOrReplaceTempView("final_unmatched");
-        sourceDataFrame.createOrReplaceTempView("source_dataframe");
-
-        String sourceColumns = Arrays.toString(sourceDataFrame.columns());
-        logger.info("Source columns: " + sourceColumns);
 
         Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated from source_dataframe");
+        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated from source_listing");
+
+        mergeDf2.printSchema();
+        mergeDf1.printSchema();
 
         // Union all records together
         Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
-        dfMergeFinal.printSchema();
+        long mergedFinalCount = dfMergeFinal.count();
+        logger.info("Merged final count: " + mergedFinalCount);
         dfMergeFinal
-                .repartition(targetPartitions)
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
