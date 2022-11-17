@@ -26,9 +26,7 @@ public class LoadPatientPharmacy {
         RuntimeConfig rtConfig = session.conf();
 
         final String sourceQueryFileName = "LoadSourcePatientPharmacy.sql";
-        final String targetQueryFileName = "LoadTargetPatientPharmacy.sql";
         String sourceVisitsQuery;
-        String targetQuery;
         InputStream inputStream = LoadPatientPharmacy.class.getClassLoader().getResourceAsStream(sourceQueryFileName);
         if (inputStream == null) {
             logger.error(sourceQueryFileName + " not found");
@@ -41,17 +39,6 @@ public class LoadPatientPharmacy {
             return;
         }
 
-        InputStream targetQueryInputStream = LoadPatientPharmacy.class.getClassLoader().getResourceAsStream(targetQueryFileName);
-        if (targetQueryInputStream == null) {
-            logger.error(targetQueryFileName + " not found");
-            return;
-        }
-        try {
-            targetQuery = IOUtils.toString(targetQueryInputStream, Charset.defaultCharset());
-        } catch (IOException e) {
-            logger.error("Failed to load target patient pharmacy from file", e);
-            return;
-        }
         logger.info("Loading source patient pharmacy");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
@@ -63,13 +50,7 @@ public class LoadPatientPharmacy {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
-//        sourceDf = sourceDf
-//                .withColumn("PatientUID", lit(null))
-//                .withColumn("DeletedFlag", lit(null).cast(DataTypes.BooleanType));
-
-        sourceDf.printSchema();
-
-        sourceDf.persist(StorageLevel.MEMORY_AND_DISK());
+        sourceDf.persist(StorageLevel.DISK_ONLY());
 
         logger.info("Loading target patient pharmacy");
         Dataset<Row> targetDf = session.read()
@@ -79,22 +60,45 @@ public class LoadPatientPharmacy {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("numpartitions", rtConfig.get("spark.sink.numpartitions"))
-                .option("dbtable", "(" + targetQuery + ") pvt")
+                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
                 .load();
 
-        targetDf.persist(StorageLevel.MEMORY_AND_DISK());
-        targetDf.printSchema();
+        targetDf.persist(StorageLevel.DISK_ONLY());
 
-        // Find rows in target table unmatched in source table
-        Dataset<Row> unmatchedDf = targetDf.except(sourceDf);
+        sourceDf.createOrReplaceTempView("source_patient_pharmacy");
+        targetDf.createOrReplaceTempView("target_patient_pharmacy");
+
+        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patient_pharmacy t LEFT ANTI JOIN source_patient_pharmacy s ON s.SiteCode <=> t.SiteCode AND" +
+                " s.PatientPK <=> t.PatientPK AND s.PatientPharmacyUnique_ID <=> t.PatientPharmacyUnique_ID AND s.VisitID <=>t.VisitID");
+
+        long unmatchedVisitCount = unmatchedFromJoinDf.count();
+        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
+        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+
+
+        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT PatientID,SiteCode,FacilityName,PatientPK,VisitID," +
+                "Drug,DispenseDate,Duration,ExpectedReturn,TreatmentType,PeriodTaken,ProphylaxisType,Emr,Project,CKV," +
+                "RegimenLine,RegimenChangedSwitched,RegimenChangeSwitchReason,StopRegimenReason,StopRegimenDate," +
+                "PatientUnique_ID,PatientPharmacyUnique_ID FROM final_unmatched");
+
+        Dataset<Row> sourceMergeDf2 = session.sql("SELECT PatientID,SiteCode,FacilityName,PatientPK,VisitID," +
+                "Drug,DispenseDate,Duration,ExpectedReturn,TreatmentType,PeriodTaken,ProphylaxisType,Emr,Project,CKV," +
+                "RegimenLine,RegimenChangedSwitched,RegimenChangeSwitchReason,StopRegimenReason,StopRegimenDate," +
+                "PatientUnique_ID,PatientPharmacyUnique_ID FROM source_patient_pharmacy");
+
+        sourceMergeDf2.printSchema();
+        unmatchedMergeDf1.printSchema();
+
 
         // Will "update" all rows matched, insert new rows and maintain any unmatched rows
-        Dataset<Row> finalMergeDf = sourceDf.unionAll(unmatchedDf);
+        Dataset<Row> finalMergeDf = unmatchedMergeDf1.union(sourceMergeDf2);
+
+        long mergedFinalCount = finalMergeDf.count();
+        logger.info("Merged final count: " + mergedFinalCount);
 
         logger.info("Writing final dataframe to target table");
         // Write to target table
         finalMergeDf
-                .repartition(10)
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
