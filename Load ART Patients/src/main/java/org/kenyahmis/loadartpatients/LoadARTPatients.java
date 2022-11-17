@@ -51,7 +51,7 @@ public class LoadARTPatients {
                 .option("dbtable", "(" + sourceQuery + ") pv")
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
-        sourceDf.persist(StorageLevel.DISK_ONLY());
+
 
         Dataset<Row> lookupExitReasonDf = session.read()
                 .format("jdbc")
@@ -74,14 +74,13 @@ public class LoadARTPatients {
         Dataset lastRegimenLookup = lookupRegimenDf.alias("last_regimen_lookup");
         Dataset startRegimenLookup = lookupRegimenDf.alias("start_regimen_lookup");
 
-
         Dataset<Row> lookupPatientSourceDf = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
                 .option("driver", rtConfig.get("spark.sink.driver"))
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.lookup.regimen"))
+                .option("dbtable", rtConfig.get("spark.lookup.patientSource"))
                 .load();
 
         // clean source art records
@@ -147,6 +146,7 @@ public class LoadARTPatients {
                 .withColumn("LastRegimen", when(col("last_lookup_regimen.target_name").isNotNull(), col("last_lookup_regimen.target_name"))
                         .otherwise(col("LastRegimen")));
 
+        sourceDf.persist(StorageLevel.DISK_ONLY());
         logger.info("Loading target ART Patients");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")

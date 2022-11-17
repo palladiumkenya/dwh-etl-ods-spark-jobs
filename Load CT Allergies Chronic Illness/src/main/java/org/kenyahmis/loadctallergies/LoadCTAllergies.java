@@ -50,7 +50,6 @@ public class LoadCTAllergies {
                 .option("query", query)
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
-
         sourceDataFrame.persist(StorageLevel.DISK_ONLY());
 
         Dataset<Row> lookupChronicIllnessDf = session.read()
