@@ -24,7 +24,6 @@ public class LoadCTContactListing {
                 .config(conf)
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
-//        final int targetPartitions = 10;
 
         final String queryFileName = "LoadCTContactListing.sql";
         String query;
@@ -51,6 +50,8 @@ public class LoadCTContactListing {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
+        sourceDataFrame.persist(StorageLevel.DISK_ONLY());
+
         sourceDataFrame = sourceDataFrame
                 .withColumn("ContactAge", when(col("ContactAge").lt(lit(0))
                         .or(col("ContactAge").gt(lit(120))), lit(999)))
@@ -72,8 +73,6 @@ public class LoadCTContactListing {
                 .withColumn("KnowledgeOfHivStatus", when(col("KnowledgeOfHivStatus").isin("Negative", "Yes", "Positive", "Exposed Infant", "Exposed", "664", "703"), "Yes")
                         .when(col("KnowledgeOfHivStatus").isin("No", "Unknown", "1067", "0"), "No")
                         .otherwise(col("KnowledgeOfHivStatus")));
-
-        sourceDataFrame.persist(StorageLevel.DISK_ONLY());
 
         logger.info("Loading target ct contact listing data frame");
         Dataset<Row> targetDataFrame = session.read()

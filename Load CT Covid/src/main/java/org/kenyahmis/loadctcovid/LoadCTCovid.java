@@ -51,6 +51,8 @@ public class LoadCTCovid {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
+        sourceDataFrame.persist(StorageLevel.DISK_ONLY());
+
         sourceDataFrame = sourceDataFrame
                 .withColumn("Covid19AssessmentDate", when(col("Covid19AssessmentDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
                         .or(col("Covid19AssessmentDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
@@ -65,8 +67,6 @@ public class LoadCTCovid {
                         .when(col("VaccinationStatus").equalTo("Partial"), "Partially Vaccinated")
                         .when(col("VaccinationStatus").equalTo("Partial - Details not Available"), "Partially Vaccinated")
                         .otherwise(col("VaccinationStatus")));
-
-        sourceDataFrame.persist(StorageLevel.DISK_ONLY());
 
         logger.info("Loading target ct covid data frame");
         Dataset<Row> targetDataFrame = session.read()
