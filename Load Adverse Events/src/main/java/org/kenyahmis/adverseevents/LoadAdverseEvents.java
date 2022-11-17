@@ -147,7 +147,7 @@ public class LoadAdverseEvents {
                 "AdverseEventClinicalOutcome,AdverseEventIsPregnant,CKV,PatientUnique_ID,AdverseEventsUnique_ID,DateImported" +
                 " FROM source_events");
 
-        sourceDf.printSchema();
+        sourceMergeDf2.printSchema();
         unmatchedMergeDf1.printSchema();
 
         Dataset<Row> dfMergeFinal = unmatchedMergeDf1.union(sourceMergeDf2);
