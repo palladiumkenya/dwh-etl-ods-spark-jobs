@@ -11,8 +11,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.Date;
+import java.time.LocalDate;
 
-import static org.apache.spark.sql.functions.lit;
+import static org.apache.spark.sql.functions.*;
 
 public class LoadPatientPharmacy {
     private static final Logger logger = LoggerFactory.getLogger(LoadPatientPharmacy.class);
@@ -49,6 +51,63 @@ public class LoadPatientPharmacy {
                 .option("dbtable", "(" + sourceVisitsQuery + ") pv")
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
+
+        // load lookup tables
+        Dataset<Row> lookupRegimenDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.regimen"))
+                .load();
+
+        Dataset<Row> lookupTreatmentDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.treatment"))
+                .load();
+
+        Dataset<Row> lookupProphylaxisDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.prophylaxis"))
+                .load();
+
+        sourceDf = sourceDf
+                .withColumn("Duration", when(col("Duration").cast(DataTypes.FloatType).lt(lit(0)), lit(999)))
+                .withColumn("ExpectedReturn", when(col("ExpectedReturn").lt(lit(Date.valueOf(LocalDate.of(1900, 1, 1)))),
+                        lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("ExpectedReturn")))
+                .withColumn("PeriodTaken", when(col("PeriodTaken").cast(DataTypes.FloatType).leq(lit(0)), lit(999)))
+                .withColumn("Emr", when(col("Emr").equalTo("Open Medical Records System - OpenMRS"), "OpenMRS")
+                        .when(col("Emr").equalTo("Ampath AMRS"), "AMRS")
+                        .otherwise(col("Emr")))
+                .withColumn("Project", when(col("Project").isin("Ampathplus", "AMPATH"), "Ampath Plus")
+                        .when(col("Project").isin("UCSF Clinical Kisumu", "CHAP Uzima", "DREAM", "IRDO"), "Kenya HMIS II")
+                        .otherwise(col("Project")));
+
+        // set values from lookup tables
+
+        sourceDf = sourceDf
+                .join(lookupRegimenDf, sourceDf.col("Drug")
+                        .equalTo(lookupRegimenDf.col("source_name")), "left")
+                .join(lookupTreatmentDf, sourceDf.col("TreatmentType")
+                        .equalTo(lookupTreatmentDf.col("source_name")), "left")
+                .join(lookupProphylaxisDf, sourceDf.col("ProphylaxisType")
+                        .equalTo(lookupProphylaxisDf.col("source_name")), "left")
+                .withColumn("Drug", when(lookupRegimenDf.col("target_name").isNotNull(), lookupRegimenDf.col("target_name"))
+                        .otherwise(col("Drug")))
+                .withColumn("TreatmentType", when(lookupTreatmentDf.col("target_name").isNotNull(), lookupTreatmentDf.col("target_name"))
+                        .otherwise(col("TreatmentType")))
+                .withColumn("ProphylaxisType", when(lookupProphylaxisDf.col("target_name").isNotNull(), lookupProphylaxisDf.col("target_name"))
+                        .otherwise(col("ProphylaxisType")));
 
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
