@@ -90,13 +90,13 @@ public class LoadCTContactListing {
         sourceDataFrame.createOrReplaceTempView("source_listing");
 
         Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_listing t LEFT ANTI JOIN source_listing s ON s.SiteCode <=> t.SiteCode AND" +
-                " s.PatientPK <=> t.PatientPK AND s.AdverseEventsUnique_ID <=> t.AdverseEventsUnique_ID");
+                " s.PatientPK <=> t.PatientPK AND s.ContactListingUnique_ID <=> t.ContactListingUnique_ID");
 
         unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
 
-        Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated from source_listing");
+        Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated, PatientUnique_ID,ContactListingUnique_ID from final_unmatched");
+        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated, PatientUnique_ID,ContactListingUnique_ID from source_listing");
 
         mergeDf2.printSchema();
         mergeDf1.printSchema();
