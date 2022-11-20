@@ -133,17 +133,17 @@ public class LoadARTPatients {
         // Add values from lookup tables
         sourceDf = sourceDf
                 .join(lookupExitReasonDf, sourceDf.col("ExitReason").equalTo(lookupExitReasonDf.col("source_name")), "left")
-                .join(previousRegimenLookup, sourceDf.col("PreviousARTRegimen").equalTo(lookupRegimenDf.col("previous_lookup_regimen.source_name")), "left")
-                .join(startRegimenLookup, sourceDf.col("StartRegimen").equalTo(lookupRegimenDf.col("start_lookup_regimen.source_name")), "left")
-                .join(lastRegimenLookup, sourceDf.col("LastRegimen").equalTo(lookupRegimenDf.col("last_lookup_regimen.source_name")), "left")
+                .join(previousRegimenLookup, sourceDf.col("PreviousARTRegimen").equalTo(previousRegimenLookup.col("source_name")), "left")
+                .join(startRegimenLookup, sourceDf.col("StartRegimen").equalTo(startRegimenLookup.col("source_name")), "left")
+                .join(lastRegimenLookup, sourceDf.col("LastRegimen").equalTo(lastRegimenLookup.col("source_name")), "left")
                 .join(lookupPatientSourceDf, sourceDf.col("PatientSource").equalTo(lookupPatientSourceDf.col("source_name")), "left")
                 .withColumn("ExitReason", when(lookupExitReasonDf.col("target_name").isNotNull(), lookupExitReasonDf.col("target_name"))
                         .otherwise(col("ExitReason")))
-                .withColumn("PreviousARTRegimen", when(col("previous_lookup_regimen.target_name").isNotNull(), col("previous_lookup_regimen.target_name"))
+                .withColumn("PreviousARTRegimen", when(col("previous_regimen_lookup.target_name").isNotNull(), col("previous_regimen_lookup.target_name"))
                         .otherwise(col("ExitReason")))
-                .withColumn("StartRegimen", when(col("start_lookup_regimen.target_name").isNotNull(), col("start_lookup_regimen.target_name"))
+                .withColumn("StartRegimen", when(col("start_regimen_lookup.target_name").isNotNull(), col("start_regimen_lookup.target_name"))
                         .otherwise(col("StartRegimen")))
-                .withColumn("LastRegimen", when(col("last_lookup_regimen.target_name").isNotNull(), col("last_lookup_regimen.target_name"))
+                .withColumn("LastRegimen", when(col("last_regimen_lookup.target_name").isNotNull(), col("last_regimen_lookup.target_name"))
                         .otherwise(col("LastRegimen")));
 
         sourceDf.persist(StorageLevel.DISK_ONLY());
@@ -176,7 +176,7 @@ public class LoadARTPatients {
                 "PreviousARTRegimen,StartARTAtThisFacility,StartRegimen,StartRegimenLine,LastARTDate,LastRegimen," +
                 "LastRegimenLine,Duration,ExpectedReturn,Provider,LastVisit,ExitReason,ExitDate,Emr," +
                 "Project,DOB,CKV,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf" +
-                "FROM final_unmatched");
+                " FROM final_unmatched");
 
         Dataset<Row> sourceMergeDf2 = session.sql("SELECT" +
                 " PatientID,PatientPK,SiteCode,FacilityName,AgeEnrollment," +
@@ -184,7 +184,7 @@ public class LoadARTPatients {
                 "PreviousARTRegimen,StartARTAtThisFacility,StartRegimen,StartRegimenLine,LastARTDate,LastRegimen," +
                 "LastRegimenLine,Duration,ExpectedReturn,Provider,LastVisit,ExitReason,ExitDate,Emr," +
                 "Project,DOB,CKV,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf" +
-                "FROM source_patients");
+                " FROM source_patients");
 
         sourceDf.printSchema();
         unmatchedMergeDf1.printSchema();

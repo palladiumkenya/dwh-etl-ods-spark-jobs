@@ -62,7 +62,7 @@ public class LoadCTGBVScreening {
         targetDataFrame.createOrReplaceTempView("target_gbv_screening");
 
         Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_gbv_screening t LEFT ANTI JOIN source_gbv_screening s ON s.SiteCode <=> t.SiteCode AND" +
-                " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
+                " s.PatientPK <=> t.PatientPK AND t.SiteCode = s.SiteCode AND s.VisitID <=> t.VisitID");
 
         long unmatchedVisitCount = unmatchedFromJoinDf.count();
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
