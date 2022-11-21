@@ -63,7 +63,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.kenyahmis.drugalcoholscreening.LoadDrugAlcoholScreening</mainClass>
+                            <mainClass>org.kenyahmis.ctdepressionscreening.LoadDepressionScreening</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
