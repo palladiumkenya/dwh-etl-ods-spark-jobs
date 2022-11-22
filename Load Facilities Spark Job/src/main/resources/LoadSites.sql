@@ -27,9 +27,7 @@ select
     `mfl_interface_db`.`facilities_emr_info`.`mnch` AS `MCH`,
     `mfl_interface_db`.`facilities_emr_info`.`tb` AS `TB`,
     `mfl_interface_db`.`facilities_emr_info`.`lab_manifest` AS `Lab Manifest`,
-    `mfl_interface_db`.`facilities_facility_info`.`date_added` AS `Date Added`,
-    `mfl_interface_db`.`facilities_facility_info`.`date_updated` AS `Date Updated`
-
+    `mfl_interface_db`.`facilities_facility_info`.`date_added` AS `Date Added`
 from
     ((((((((((((`mfl_interface_db`.`facilities_facility_info`
         left join `mfl_interface_db`.`facilities_owner` on
