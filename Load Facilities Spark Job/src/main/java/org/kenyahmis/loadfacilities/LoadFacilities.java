@@ -70,8 +70,8 @@ public class LoadFacilities {
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
         unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
-        Dataset<Row> mergeDf1 = session.sql("select MFL_Code, \"Facility Name\", County, SubCounty, Owner, Latitude, Longitude, SDP, EMR, \"EMR Status\", \"HTS Use\", \"HTS Deployment\", \"HTS Status\", \"IL Status\", BOOLEAN(\"Registration IE\"), BOOLEAN(\"Pharmacy IE\"), mlab, Ushauri, Nishauri, OVC, OTZ, PrEP, 3PM, AIR, KP, MCH, TB,\"Lab Manifest\" from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select MFL_Code, \"Facility Name\", County, SubCounty, Owner, Latitude, Longitude, SDP, EMR, \"EMR Status\", \"HTS Use\", \"HTS Deployment\", \"HTS Status\", \"IL Status\", BOOLEAN(\"Registration IE\"), BOOLEAN(\"Pharmacy IE\"), STRING(mlab), STRING(Ushauri), STRING(Nishauri), STRING(OVC), STRING(OTZ), STRING(PrEP), STRING(3PM), STRING(AIR), STRING(KP), STRING(MCH), STRING(TB), STRING(\"Lab Manifest\") from source_facilities");
+        Dataset<Row> mergeDf1 = session.sql("select MFL_Code, \"Facility Name\", County, SubCounty, Owner, Latitude, Longitude, SDP,\"SDP Agency\", EMR, \"EMR Status\", \"HTS Use\", \"HTS Deployment\", \"HTS Status\", \"IL Status\", BOOLEAN(\"Registration IE\"), BOOLEAN(\"Pharmacy IE\"), mlab, Ushauri, Nishauri, OVC, OTZ, PrEP, 3PM, AIR, KP, MCH, TB,\"Lab Manifest\" from final_unmatched");
+        Dataset<Row> mergeDf2 = session.sql("select MFL_Code, \"Facility Name\", County, SubCounty, Owner, Latitude, Longitude, SDP,\"SDP Agency\", EMR, \"EMR Status\", \"HTS Use\", \"HTS Deployment\", \"HTS Status\", \"IL Status\", BOOLEAN(\"Registration IE\"), BOOLEAN(\"Pharmacy IE\"), STRING(mlab), STRING(Ushauri), STRING(Nishauri), STRING(OVC), STRING(OTZ), STRING(PrEP), STRING(3PM), STRING(AIR), STRING(KP), STRING(MCH), STRING(TB), STRING(\"Lab Manifest\") from source_facilities");
 
         mergeDf2.printSchema();
         mergeDf1.printSchema();
