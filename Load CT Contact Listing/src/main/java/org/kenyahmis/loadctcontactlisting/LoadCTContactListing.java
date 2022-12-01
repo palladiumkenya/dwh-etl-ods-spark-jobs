@@ -54,7 +54,8 @@ public class LoadCTContactListing {
 
         sourceDataFrame = sourceDataFrame
                 .withColumn("ContactAge", when(col("ContactAge").lt(lit(0))
-                        .or(col("ContactAge").gt(lit(120))), lit(999)))
+                        .or(col("ContactAge").gt(lit(120))), lit(999))
+                        .otherwise(col("ContactAge")))
                 .withColumn("ContactSex", when(col("ContactSex").equalTo("U"), "Undefined")
                         .when(col("ContactSex").equalTo("M"), "Male")
                         .when(col("ContactSex").equalTo("F"), "Female")
@@ -95,8 +96,17 @@ public class LoadCTContactListing {
         unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
 
-        Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated, PatientUnique_ID,ContactListingUnique_ID from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project, PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient, ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient, KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated, PatientUnique_ID,ContactListingUnique_ID from source_listing");
+        Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project," +
+                " PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient," +
+                " ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient," +
+                " KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated," +
+                " PatientUnique_ID,ContactListingUnique_ID from final_unmatched");
+
+        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project," +
+                " PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient," +
+                " ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient," +
+                " KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated," +
+                " PatientUnique_ID,ContactListingUnique_ID from source_listing");
 
         mergeDf2.printSchema();
         mergeDf1.printSchema();

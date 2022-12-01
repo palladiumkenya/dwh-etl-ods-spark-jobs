@@ -73,7 +73,8 @@ public class LoadPatientVisits {
 
         // Clean source data
         sourceDf = sourceDf.withColumn("OIDATE", when((col("OIDATE").lt(lit(Date.valueOf(LocalDate.of(2000, 1, 1))).cast(DataTypes.DateType)))
-                .or(col("OIDATE").gt(lit(Date.valueOf(LocalDate.now())).cast(DataTypes.DateType))), lit(Date.valueOf(LocalDate.of(1900, 1, 1)))))
+                .or(col("OIDATE").gt(lit(Date.valueOf(LocalDate.now())).cast(DataTypes.DateType))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                .otherwise(col("OIDATE")))
                 .withColumn("Weight", when((col("Weight").lt(lit(0)))
                         .or(col("Weight").gt(lit(200))), lit(999).cast(DataTypes.StringType))
                         .when(col("Weight").equalTo(""), null)
@@ -97,9 +98,11 @@ public class LoadPatientVisits {
                         .when(col("DifferentiatedCare").equalTo(""), null)
                         .otherwise(col("DifferentiatedCare")))
                 .withColumn("VisitDate", when((col("VisitDate").lt(Date.valueOf(LocalDate.of(1980, 1, 1))))
-                        .or(col("VisitDate").gt(Date.valueOf(LocalDate.now()))), lit(Date.valueOf(LocalDate.of(1900, 1, 1)))))
+                        .or(col("VisitDate").gt(Date.valueOf(LocalDate.now()))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("VisitDate")))
                 .withColumn("NextAppointmentDate", when(col("NextAppointmentDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))
-                        .or(col("NextAppointmentDate").gt(lit(Date.valueOf(LocalDate.now().plusYears(1))))), lit(Date.valueOf(LocalDate.of(1900, 1, 1)))));
+                        .or(col("NextAppointmentDate").gt(lit(Date.valueOf(LocalDate.now().plusYears(1))))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
+                        .otherwise(col("NextAppointmentDate")));
 
         // Set values from look up tables
         sourceDf = sourceDf
@@ -132,8 +135,21 @@ public class LoadPatientVisits {
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
         unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
-        Dataset<Row> unMatchedMergeDf1 = session.sql("select PatientID,FacilityName,SiteCode,PatientPK,VisitID,VisitDate,SERVICE,VisitType,WHOStage,WABStage,Pregnant,LMP,EDD,Height,Weight,BP,OI,OIDate,Adherence,AdherenceCategory,FamilyPlanningMethod,PwP,GestationAge,NextAppointmentDate,Emr,Project,CKV,DifferentiatedCare,StabilityAssessment,KeyPopulationType,PopulationType,VisitBy,Temp,PulseRate,RespiratoryRate,OxygenSaturation,Muac,NutritionalStatus,EverHadMenses,Breastfeeding,Menopausal,NoFPReason,ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes,PatientUnique_ID,PatientVisitUnique_ID from final_unmatched");
-        Dataset<Row> sourceMergeDf2 = session.sql("select PatientID,FacilityName,SiteCode,PatientPK,VisitID,VisitDate,SERVICE,VisitType,WHOStage,WABStage,Pregnant,LMP,EDD,Height,Weight,BP,OI,OIDate,Adherence,AdherenceCategory,FamilyPlanningMethod,PwP,GestationAge,NextAppointmentDate,Emr,Project,CKV,DifferentiatedCare,StabilityAssessment,KeyPopulationType,PopulationType,VisitBy,Temp,PulseRate,RespiratoryRate,OxygenSaturation,Muac,NutritionalStatus,EverHadMenses,Breastfeeding,Menopausal,NoFPReason,ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes,PatientUnique_ID,PatientVisitUnique_ID from source_visits");
+        Dataset<Row> unMatchedMergeDf1 = session.sql("select PatientID,FacilityName,SiteCode,PatientPK,VisitID," +
+                "VisitDate,SERVICE,VisitType,WHOStage,WABStage,Pregnant,LMP,EDD,Height,Weight,BP,OI,OIDate,Adherence," +
+                "AdherenceCategory,FamilyPlanningMethod,PwP,GestationAge,NextAppointmentDate,Emr,Project,CKV," +
+                "DifferentiatedCare,StabilityAssessment,KeyPopulationType,PopulationType,VisitBy,Temp,PulseRate," +
+                "RespiratoryRate,OxygenSaturation,Muac,NutritionalStatus,EverHadMenses,Breastfeeding,Menopausal," +
+                "NoFPReason,ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes," +
+                "PatientUnique_ID,PatientVisitUnique_ID from final_unmatched");
+
+        Dataset<Row> sourceMergeDf2 = session.sql("select PatientID,FacilityName,SiteCode,PatientPK,VisitID," +
+                "VisitDate,SERVICE,VisitType,WHOStage,WABStage,Pregnant,LMP,EDD,Height,Weight,BP,OI,OIDate,Adherence," +
+                "AdherenceCategory,FamilyPlanningMethod,PwP,GestationAge,NextAppointmentDate,Emr,Project,CKV," +
+                "DifferentiatedCare,StabilityAssessment,KeyPopulationType,PopulationType,VisitBy,Temp,PulseRate," +
+                "RespiratoryRate,OxygenSaturation,Muac,NutritionalStatus,EverHadMenses,Breastfeeding,Menopausal," +
+                "NoFPReason,ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes," +
+                "PatientUnique_ID,PatientVisitUnique_ID from source_visits");
 
         // Union all records together
         // TODO remove duplicates in final dataframe
@@ -142,13 +158,6 @@ public class LoadPatientVisits {
         // Write to target table
         long mergedFinalCount = dfMergeFinal.count();
 
-        // final unmatched. Records in target not found at source
-        long unmatchedMergeDf1Count = unMatchedMergeDf1.count();
-        // source records count
-
-        long sourceMergeDf2Count = sourceMergeDf2.count();
-        logger.info("unmatchedMergeDf1Count (unmatched records): " + unmatchedMergeDf1Count);
-        logger.info("sourceMergeDf2Count (source records): " + sourceMergeDf2Count);
         logger.info("Merged final count: " + mergedFinalCount);
 
         // TODO test out removeDuplicates() before Nov launch
