@@ -10,9 +10,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.util.Arrays;
-
-import static org.apache.spark.sql.functions.col;
 
 public class LoadCTDefaulterTracing {
     private static final Logger logger = LoggerFactory.getLogger(LoadCTDefaulterTracing.class);

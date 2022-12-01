@@ -91,8 +91,25 @@ public class LoadCTCovid {
         unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
 
-        Dataset<Row> mergeDf1 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID, Covid19AssessmentDate, ReceivedCOVID19Vaccine, DateGivenFirstDose, FirstDoseVaccineAdministered, DateGivenSecondDose, SecondDoseVaccineAdministered, VaccinationStatus, VaccineVerification, BoosterGiven, BoosterDose, BoosterDoseDate, EverCOVID19Positive, COVID19TestDate, PatientStatus, AdmissionStatus, AdmissionUnit, MissedAppointmentDueToCOVID19, COVID19PositiveSinceLasVisit, COVID19TestDateSinceLastVisit, PatientStatusSinceLastVisit, AdmissionStatusSinceLastVisit, AdmissionStartDate, AdmissionEndDate, AdmissionUnitSinceLastVisit, SupplementalOxygenReceived, PatientVentilated, TracingFinalOutcome, CauseOfDeath, CKV, DateImported, BoosterDoseVerified, Sequence, COVID19TestResult from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID, Covid19AssessmentDate, ReceivedCOVID19Vaccine, DateGivenFirstDose, FirstDoseVaccineAdministered, DateGivenSecondDose, SecondDoseVaccineAdministered, VaccinationStatus, VaccineVerification, BoosterGiven, BoosterDose, BoosterDoseDate, EverCOVID19Positive, COVID19TestDate, PatientStatus, AdmissionStatus, AdmissionUnit, MissedAppointmentDueToCOVID19, COVID19PositiveSinceLasVisit, COVID19TestDateSinceLastVisit, PatientStatusSinceLastVisit, AdmissionStatusSinceLastVisit, AdmissionStartDate, AdmissionEndDate, AdmissionUnitSinceLastVisit, SupplementalOxygenReceived, PatientVentilated, TracingFinalOutcome, CauseOfDeath, CKV, DateImported, BoosterDoseVerified, Sequence, COVID19TestResult from source_covid");
+        Dataset<Row> mergeDf1 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName," +
+                " VisitID, Covid19AssessmentDate, ReceivedCOVID19Vaccine, DateGivenFirstDose, FirstDoseVaccineAdministered," +
+                " DateGivenSecondDose, SecondDoseVaccineAdministered, VaccinationStatus, VaccineVerification, BoosterGiven," +
+                " BoosterDose, BoosterDoseDate, EverCOVID19Positive, COVID19TestDate, PatientStatus, AdmissionStatus," +
+                " AdmissionUnit, MissedAppointmentDueToCOVID19, COVID19PositiveSinceLasVisit," +
+                " COVID19TestDateSinceLastVisit, PatientStatusSinceLastVisit, AdmissionStatusSinceLastVisit," +
+                " AdmissionStartDate, AdmissionEndDate, AdmissionUnitSinceLastVisit, SupplementalOxygenReceived," +
+                " PatientVentilated, TracingFinalOutcome, CauseOfDeath, CKV, DateImported, BoosterDoseVerified," +
+                " Sequence, COVID19TestResult from final_unmatched");
+
+        Dataset<Row> mergeDf2 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName," +
+                " VisitID, Covid19AssessmentDate, ReceivedCOVID19Vaccine, DateGivenFirstDose, FirstDoseVaccineAdministered," +
+                " DateGivenSecondDose, SecondDoseVaccineAdministered, VaccinationStatus, VaccineVerification, BoosterGiven," +
+                " BoosterDose, BoosterDoseDate, EverCOVID19Positive, COVID19TestDate, PatientStatus, AdmissionStatus," +
+                " AdmissionUnit, MissedAppointmentDueToCOVID19, COVID19PositiveSinceLasVisit," +
+                " COVID19TestDateSinceLastVisit, PatientStatusSinceLastVisit, AdmissionStatusSinceLastVisit," +
+                " AdmissionStartDate, AdmissionEndDate, AdmissionUnitSinceLastVisit, SupplementalOxygenReceived," +
+                " PatientVentilated, TracingFinalOutcome, CauseOfDeath, CKV, DateImported, BoosterDoseVerified," +
+                " Sequence, COVID19TestResult from source_covid");
 
         mergeDf2.printSchema();
         mergeDf1.printSchema();
