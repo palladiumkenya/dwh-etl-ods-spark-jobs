@@ -34,8 +34,8 @@ SELECT  P.[PatientCccNumber] AS PatientID,
 								  ,PB.[lastWABDate]
 								  ,PB.[Created]
 								  ,LTRIM(RTRIM(STR(F.Code)))+'-'+LTRIM(RTRIM(P.[PatientCccNumber])) +'-'+LTRIM(RTRIM(STR(P.[PatientPID]))) AS CKV
-							  ,P.ID
-							  ,PB.ID
+							  ,P.ID as PatientUniqueId
+							  ,PB.ID as PatientBaseLineUniqueId
 FROM [Dwapicentral].[dbo].[PatientExtract](NoLock) P
     INNER JOIN [Dwapicentral].[dbo].[PatientArtExtract](NoLock) PA ON PA.[PatientId]= P.ID
     INNER JOIN [Dwapicentral].[dbo].[PatientBaselinesExtract](NoLock) PB ON PB.[PatientId]= P.ID AND PB.Voided=0
