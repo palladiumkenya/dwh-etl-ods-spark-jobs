@@ -138,7 +138,7 @@ public class LoadCTPatients {
                 .join(educationLevelLookupDf, sourceDf.col("EducationLevel").equalTo(educationLevelLookupDf.col("SourceEducationLevel")), "left")
                 .join(regimenMapLookupDf, sourceDf.col("PreviousARTExposure").equalTo(regimenMapLookupDf.col("Source_Regimen")), "left")
                 .join(patientSourceLookupDf, sourceDf.col("PatientSource").equalTo(patientSourceLookupDf.col("source_name")), "left")
-                .join(partnerOfferingOVCLookupDf, sourceDf.col("PartnerOfferingOVCServices").equalTo(partnerOfferingOVCLookupDf.col("Source_PartnerOfferingOVCServices")), "left")
+//                .join(partnerOfferingOVCLookupDf, sourceDf.col("PartnerOfferingOVCServices").equalTo(partnerOfferingOVCLookupDf.col("Source_PartnerOfferingOVCServices")), "left")
                 .withColumn("MaritalStatus", when(maritalStatusLookupDf.col("Target_MaritalStatus").isNotNull(), maritalStatusLookupDf.col("Target_MaritalStatus"))
                         .otherwise(col("MaritalStatus")))
                 .withColumn("EducationLevel", when(educationLevelLookupDf.col("TargetEducationLevel").isNotNull(), educationLevelLookupDf.col("TargetEducationLevel"))
@@ -146,9 +146,9 @@ public class LoadCTPatients {
                 .withColumn("PreviousARTExposure", when(regimenMapLookupDf.col("Target_Regimen").isNotNull(), regimenMapLookupDf.col("Target_Regimen"))
                         .otherwise(col("PreviousARTExposure")))
                 .withColumn("PatientSource", when(patientSourceLookupDf.col("target_name").isNotNull(), patientSourceLookupDf.col("target_name"))
-                        .otherwise(col("PatientSource")))
-                .withColumn("PartnerOfferingOVCServices", when(partnerOfferingOVCLookupDf.col("Target_PartnerOfferingOVCServices").isNotNull(), partnerOfferingOVCLookupDf.col("Target_PartnerOfferingOVCServices"))
-                        .otherwise(col("PartnerOfferingOVCServices")));
+                        .otherwise(col("PatientSource")));
+//                .withColumn("PartnerOfferingOVCServices", when(partnerOfferingOVCLookupDf.col("Target_PartnerOfferingOVCServices").isNotNull(), partnerOfferingOVCLookupDf.col("Target_PartnerOfferingOVCServices"))
+//                        .otherwise(col("PartnerOfferingOVCServices")));
 
         logger.info("Loading target CT patients");
         Dataset<Row> targetDf = session.read()
@@ -165,7 +165,7 @@ public class LoadCTPatients {
         targetDf.createOrReplaceTempView("target_patients");
 
         Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patients t LEFT ANTI JOIN source_patients s ON s.SiteCode <=> t.SiteCode AND" +
-                " s.PatientPK <=> t.PatientPK AND s.Id <=> t.Id");
+                " s.PatientPK <=> t.PatientPK");
 
         long unmatchedVisitCount = unmatchedFromJoinDf.count();
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);

@@ -75,7 +75,7 @@ public class LoadDrugAlcoholScreening {
         targetDf.createOrReplaceTempView("target_alcohol_drug_screening");
 
         Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_alcohol_drug_screening t LEFT ANTI JOIN source_alcohol_drug_screening s ON s.SiteCode <=> t.SiteCode AND" +
-                " s.PatientPK <=> t.PatientPK AND s.DrugAlcoholScreeningUnique_ID <=> t.DrugAlcoholScreeningUnique_ID AND s.VisitID <=> t.VisitID");
+                " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
         long unmatchedVisitCount = unmatchedFromJoinDf.count();
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);

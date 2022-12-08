@@ -7,7 +7,6 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -128,8 +127,8 @@ public class LoadPatientVisits {
         targetDf.createOrReplaceTempView("target_visits");
         sourceDf.createOrReplaceTempView("source_visits");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_visits t LEFT ANTI JOIN source_visits s ON s.PatientID <=> t.PatientID" +
-                " AND s.PatientPK <=> t.PatientPK AND s.SiteCode <=> t.SiteCode AND s.VisitID <=> t.VisitID AND s.PatientVisitUnique_ID <=> t.PatientVisitUnique_ID");
+        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_visits t LEFT ANTI JOIN " +
+                "source_visits s ON s.PatientPK <=> t.PatientPK AND s.SiteCode <=> t.SiteCode AND s.VisitID <=> t.VisitID ");
 
         long unmatchedVisitCount = unmatchedFromJoinDf.count();
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
@@ -157,11 +156,11 @@ public class LoadPatientVisits {
 
         // Write to target table
         long mergedFinalCount = dfMergeFinal.count();
-
         logger.info("Merged final count: " + mergedFinalCount);
 
         // TODO test out removeDuplicates() before Nov launch
         dfMergeFinal
+                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))

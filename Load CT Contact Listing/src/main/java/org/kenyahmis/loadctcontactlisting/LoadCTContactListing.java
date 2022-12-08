@@ -91,7 +91,7 @@ public class LoadCTContactListing {
         sourceDataFrame.createOrReplaceTempView("source_listing");
 
         Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_listing t LEFT ANTI JOIN source_listing s ON s.SiteCode <=> t.SiteCode AND" +
-                " s.PatientPK <=> t.PatientPK AND s.ContactListingUnique_ID <=> t.ContactListingUnique_ID");
+                " s.PatientPK <=> t.PatientPK");
 
         unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
