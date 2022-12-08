@@ -131,7 +131,7 @@ public class LoadAdverseEvents {
         targetDf.createOrReplaceTempView("target_events");
 
         Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_events t LEFT ANTI JOIN source_events s ON s.SiteCode <=> t.SiteCode AND" +
-                " s.PatientPK <=> t.PatientPK AND s.AdverseEventsUnique_ID <=> t.AdverseEventsUnique_ID");
+                " s.PatientPK <=> t.PatientPK and cast(s.VisitDate as date) <=> t.VisitDate");
 
         long unmatchedVisitCount = unmatchedFromJoinDf.count();
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
