@@ -52,6 +52,54 @@ public class LoadCTPatients {
                 .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
+        sourceDf.persist(StorageLevel.DISK_ONLY());
+
+        // load lookup tables
+        Dataset<Row> maritalStatusLookupDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.maritalStatus"))
+                .load();
+
+        Dataset<Row> educationLevelLookupDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.educationLevel"))
+                .load();
+
+        Dataset<Row> regimenMapLookupDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.regimenMap"))
+                .load();
+
+        Dataset<Row> patientSourceLookupDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.patientSource"))
+                .load();
+
+        Dataset<Row> partnerOfferingOVCLookupDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.sink.url"))
+                .option("driver", rtConfig.get("spark.sink.driver"))
+                .option("user", rtConfig.get("spark.sink.user"))
+                .option("password", rtConfig.get("spark.sink.password"))
+                .option("dbtable", rtConfig.get("spark.lookup.partnerOfferingOvc"))
+                .load();
+
         sourceDf = sourceDf
                 .withColumn("DOB", when(col("DOB").lt(lit(Date.valueOf(LocalDate.of(1910, 1, 1))))
                         .or(col("DOB").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
@@ -84,7 +132,23 @@ public class LoadCTPatients {
                         .or(col("TransferInDate").gt(lit(Date.valueOf(LocalDate.now())))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
                         .otherwise(col("TransferInDate")));
 
-        sourceDf.persist(StorageLevel.DISK_ONLY());
+        // Set values from look up tables
+        sourceDf = sourceDf
+                .join(maritalStatusLookupDf, sourceDf.col("MaritalStatus").equalTo(maritalStatusLookupDf.col("Source_MaritalStatus")), "left")
+                .join(educationLevelLookupDf, sourceDf.col("EducationLevel").equalTo(educationLevelLookupDf.col("SourceEducationLevel")), "left")
+                .join(regimenMapLookupDf, sourceDf.col("PreviousARTExposure").equalTo(regimenMapLookupDf.col("Source_Regimen")), "left")
+                .join(patientSourceLookupDf, sourceDf.col("PatientSource").equalTo(patientSourceLookupDf.col("source_name")), "left")
+//                .join(partnerOfferingOVCLookupDf, sourceDf.col("PartnerOfferingOVCServices").equalTo(partnerOfferingOVCLookupDf.col("Source_PartnerOfferingOVCServices")), "left")
+                .withColumn("MaritalStatus", when(maritalStatusLookupDf.col("Target_MaritalStatus").isNotNull(), maritalStatusLookupDf.col("Target_MaritalStatus"))
+                        .otherwise(col("MaritalStatus")))
+                .withColumn("EducationLevel", when(educationLevelLookupDf.col("TargetEducationLevel").isNotNull(), educationLevelLookupDf.col("TargetEducationLevel"))
+                        .otherwise(col("EducationLevel")))
+                .withColumn("PreviousARTExposure", when(regimenMapLookupDf.col("Target_Regimen").isNotNull(), regimenMapLookupDf.col("Target_Regimen"))
+                        .otherwise(col("PreviousARTExposure")))
+                .withColumn("PatientSource", when(patientSourceLookupDf.col("target_name").isNotNull(), patientSourceLookupDf.col("target_name"))
+                        .otherwise(col("PatientSource")));
+//                .withColumn("PartnerOfferingOVCServices", when(partnerOfferingOVCLookupDf.col("Target_PartnerOfferingOVCServices").isNotNull(), partnerOfferingOVCLookupDf.col("Target_PartnerOfferingOVCServices"))
+//                        .otherwise(col("PartnerOfferingOVCServices")));
 
         logger.info("Loading target CT patients");
         Dataset<Row> targetDf = session.read()
@@ -95,14 +159,13 @@ public class LoadCTPatients {
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
                 .load();
-
         targetDf.persist(StorageLevel.DISK_ONLY());
 
         sourceDf.createOrReplaceTempView("source_patients");
         targetDf.createOrReplaceTempView("target_patients");
 
         Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patients t LEFT ANTI JOIN source_patients s ON s.SiteCode <=> t.SiteCode AND" +
-                " s.PatientPK <=> t.PatientPK AND s.Id <=> t.Id");
+                " s.PatientPK <=> t.PatientPK");
 
         long unmatchedVisitCount = unmatchedFromJoinDf.count();
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
