@@ -76,7 +76,7 @@ public class LoadEnhancedAdherenceCounselling {
         targetDf.createOrReplaceTempView("target_enhanced_adherence_counselling");
 
         Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_enhanced_adherence_counselling t LEFT ANTI JOIN source_enhanced_adherence_counselling s ON s.SiteCode <=> t.SiteCode AND" +
-                " s.PatientPK <=> t.PatientPK AND s.VisitID <=>t.VisitID AND s.EnhancedAdherenceCounsellingUnique_ID <=> t.EnhancedAdherenceCounsellingUnique_ID");
+                " s.PatientPK <=> t.PatientPK AND s.VisitID <=>t.VisitID");
 
         long unmatchedVisitCount = unmatchedFromJoinDf.count();
         logger.info("Unmatched count after target join is: " + unmatchedVisitCount);

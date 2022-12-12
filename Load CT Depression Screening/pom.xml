@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.kenyahmis</groupId>
-    <artifactId>load-patient-pharmacy</artifactId>
+    <artifactId>load-ct-depression-screening</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <dependencies>
@@ -63,7 +63,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.kenyahmis.loadpatientpharmacy.LoadPatientPharmacy</mainClass>
+                            <mainClass>org.kenyahmis.ctdepressionscreening.LoadDepressionScreening</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

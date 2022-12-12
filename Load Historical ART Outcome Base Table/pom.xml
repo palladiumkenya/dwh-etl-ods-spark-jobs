@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.kenyahmis</groupId>
-    <artifactId>load-patient-pharmacy</artifactId>
+    <artifactId>historical-art-outcome-base-table</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <dependencies>
@@ -63,7 +63,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.kenyahmis.loadpatientpharmacy.LoadPatientPharmacy</mainClass>
+                            <mainClass>org.kenyahmis.historicalartbase.LoadHistoricalARTBase</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -91,5 +91,6 @@
         <java.version>1.8</java.version>
         <spark.version>3.3.0</spark.version>
     </properties>
+
 
 </project>

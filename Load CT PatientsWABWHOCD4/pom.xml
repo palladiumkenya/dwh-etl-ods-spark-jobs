@@ -62,7 +62,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.kenyahmis.loadpatientpharmacy.LoadPatientPharmacy</mainClass>
+                            <mainClass>org.kenyahmis.wabwho.LoadPatientsWABWHO</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
