@@ -28,11 +28,12 @@ public class LoadHistoricalARTBase {
             String dbURL = rtConfig.get("spark.sink.url");
             String user = rtConfig.get("spark.sink.user");
             String pass = rtConfig.get("spark.sink.password");
+            final int queryTimout = 18000;
             conn = DriverManager.getConnection(dbURL, user, pass);
             if (conn != null) {
                 String query = new LoadHistoricalARTBase().loadQuery();
                 Statement statement = conn.createStatement();
-                statement.setQueryTimeout(7200);
+                statement.setQueryTimeout(queryTimout);
                 statement.execute(query);
                 logger.info("Loaded Historical ART base table");
             }else {

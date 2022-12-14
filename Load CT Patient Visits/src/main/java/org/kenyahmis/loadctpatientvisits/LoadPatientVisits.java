@@ -160,7 +160,7 @@ public class LoadPatientVisits {
 
         // TODO test out removeDuplicates() before Nov launch
         dfMergeFinal
-                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
+//                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
