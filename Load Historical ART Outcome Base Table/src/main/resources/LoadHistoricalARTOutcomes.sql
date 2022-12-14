@@ -1,5 +1,4 @@
 truncate table ODS.dbo.HistoricalARTOutcomesBaseTable;
-
 declare
 @start_date date = '2017-01-31',
 @end_date date = '2022-09-30';
