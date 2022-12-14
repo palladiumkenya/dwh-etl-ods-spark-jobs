@@ -7,6 +7,7 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -153,14 +154,13 @@ public class LoadPatientVisits {
         // Union all records together
         // TODO remove duplicates in final dataframe
         Dataset<Row> dfMergeFinal = unMatchedMergeDf1.union(sourceMergeDf2);
-
         // Write to target table
         long mergedFinalCount = dfMergeFinal.count();
         logger.info("Merged final count: " + mergedFinalCount);
 
         // TODO test out removeDuplicates() before Nov launch
         dfMergeFinal
-//                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
+                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
