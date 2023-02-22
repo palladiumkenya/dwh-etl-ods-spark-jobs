@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.kenyahmis</groupId>
-    <artifactId>patients-wab-who-cd4</artifactId>
+    <artifactId>patient-baselines</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <dependencies>
@@ -62,7 +62,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.kenyahmis.wabwho.LoadPatientsWABWHO</mainClass>
+                            <mainClass>org.kenyahmis.patientbaselines.LoadPatientBaselines</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
