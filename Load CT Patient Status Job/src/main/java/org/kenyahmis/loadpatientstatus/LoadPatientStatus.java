@@ -77,32 +77,21 @@ public class LoadPatientStatus {
         sourceDf.createOrReplaceTempView("source_patient_status");
         targetDf.createOrReplaceTempView("target_patient_status");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patient_status t LEFT ANTI JOIN source_patient_status s ON s.SiteCode <=> t.SiteCode AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patient_status s LEFT ANTI JOIN target_patient_status t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND cast(s.ExitDate as date) <=> t.ExitDate");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT PatientID,SiteCode,FacilityName,ExitDescription,ExitDate,ExitReason," +
-                "    PatientPK,Emr,Project,CKV,TOVerified,TOVerifiedDate,ReEnrollmentDate," +
+        newRecordsJoinDf = session.sql("SELECT PatientID,SiteCode,FacilityName,ExitDescription,ExitDate,ExitReason," +
+                "    PatientPK,Emr,Project,TOVerified,TOVerifiedDate,ReEnrollmentDate," +
                 "    DeathDate,PatientUnique_ID,PatientStatusUnique_ID" +
-                " FROM final_unmatched");
-        Dataset<Row> sourceMergeDf2 = session.sql("SELECT PatientID,SiteCode,FacilityName,ExitDescription,ExitDate,ExitReason," +
-                "    PatientPK,Emr,Project,CKV,TOVerified,TOVerifiedDate,ReEnrollmentDate," +
-                "    DeathDate,PatientUnique_ID,PatientStatusUnique_ID" +
-                " FROM source_patient_status");
+                " FROM new_records");
 
-        sourceDf.printSchema();
-        unmatchedMergeDf1.printSchema();
-
-        Dataset<Row> dfMergeFinal = unmatchedMergeDf1.union(sourceMergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-
-        logger.info("Writing final dataframe to target table");
-        // Write to target table
-        dfMergeFinal
+        newRecordsJoinDf
+                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -110,8 +99,7 @@ public class LoadPatientStatus {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

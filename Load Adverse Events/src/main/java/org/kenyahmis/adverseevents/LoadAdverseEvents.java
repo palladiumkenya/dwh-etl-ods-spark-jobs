@@ -130,33 +130,23 @@ public class LoadAdverseEvents {
         sourceDf.createOrReplaceTempView("source_events");
         targetDf.createOrReplaceTempView("target_events");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_events t LEFT ANTI JOIN source_events s ON s.SiteCode <=> t.SiteCode AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_events s LEFT ANTI JOIN target_events t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK and cast(s.VisitDate as date) <=> t.VisitDate");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
-        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT PatientID,Patientpk, SiteCode,AdverseEvent,AdverseEventStartDate," +
+        long newAdverseEventsCount = newRecordsJoinDf.count();
+        logger.info("New adverse events count is: " + newAdverseEventsCount);
+
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
+        newRecordsJoinDf = session.sql("SELECT PatientID,Patientpk, SiteCode,AdverseEvent,AdverseEventStartDate," +
                 "AdverseEventEndDate,Severity,VisitDate,EMR,Project,AdverseEventCause,AdverseEventRegimen,AdverseEventActionTaken," +
-                "AdverseEventClinicalOutcome,AdverseEventIsPregnant,CKV,PatientUnique_ID,AdverseEventsUnique_ID,DateImported" +
-                " FROM final_unmatched");
-
-        Dataset<Row> sourceMergeDf2 = session.sql("SELECT PatientID,Patientpk, SiteCode,AdverseEvent,AdverseEventStartDate," +
-                "AdverseEventEndDate,Severity,VisitDate,EMR,Project,AdverseEventCause,AdverseEventRegimen,AdverseEventActionTaken," +
-                "AdverseEventClinicalOutcome,AdverseEventIsPregnant,CKV,PatientUnique_ID,AdverseEventsUnique_ID,DateImported" +
-                " FROM source_events");
-
-        sourceMergeDf2.printSchema();
-        unmatchedMergeDf1.printSchema();
-
-        Dataset<Row> dfMergeFinal = unmatchedMergeDf1.union(sourceMergeDf2);
-
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
+                "AdverseEventClinicalOutcome,AdverseEventIsPregnant,PatientUnique_ID,AdverseEventsUnique_ID,DateImported" +
+                " FROM new_records");
 
         // Write to target table
-        dfMergeFinal
+        newRecordsJoinDf
+                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -164,8 +154,7 @@ public class LoadAdverseEvents {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

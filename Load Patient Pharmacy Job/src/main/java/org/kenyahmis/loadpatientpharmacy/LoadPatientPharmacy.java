@@ -7,7 +7,6 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -127,37 +126,21 @@ public class LoadPatientPharmacy {
         sourceDf.createOrReplaceTempView("source_patient_pharmacy");
         targetDf.createOrReplaceTempView("target_patient_pharmacy");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patient_pharmacy t LEFT ANTI JOIN source_patient_pharmacy s ON s.SiteCode <=> t.SiteCode AND" +
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patient_pharmacy s LEFT ANTI JOIN target_patient_pharmacy t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT PatientID,SiteCode,FacilityName,PatientPK,VisitID," +
-                "Drug,DispenseDate,Duration,ExpectedReturn,TreatmentType,PeriodTaken,ProphylaxisType,Emr,Project,CKV," +
+        newRecordsJoinDf = session.sql("SELECT PatientID,SiteCode,FacilityName,PatientPK,VisitID," +
+                "Drug,DispenseDate,Duration,ExpectedReturn,TreatmentType,PeriodTaken,ProphylaxisType,Emr,Project," +
                 "RegimenLine,RegimenChangedSwitched,RegimenChangeSwitchReason,StopRegimenReason,StopRegimenDate," +
-                "PatientUnique_ID,PatientPharmacyUnique_ID FROM final_unmatched");
+                "PatientUnique_ID,PatientPharmacyUnique_ID FROM new_records");
 
-        Dataset<Row> sourceMergeDf2 = session.sql("SELECT PatientID,SiteCode,FacilityName,PatientPK,VisitID," +
-                "Drug,DispenseDate,Duration,ExpectedReturn,TreatmentType,PeriodTaken,ProphylaxisType,Emr,Project,CKV," +
-                "RegimenLine,RegimenChangedSwitched,RegimenChangeSwitchReason,StopRegimenReason,StopRegimenDate," +
-                "PatientUnique_ID,PatientPharmacyUnique_ID FROM source_patient_pharmacy");
-
-        sourceMergeDf2.printSchema();
-        unmatchedMergeDf1.printSchema();
-
-
-        // Will "update" all rows matched, insert new rows and maintain any unmatched rows
-        Dataset<Row> finalMergeDf = unmatchedMergeDf1.union(sourceMergeDf2);
-
-        long mergedFinalCount = finalMergeDf.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-
-        logger.info("Writing final dataframe to target table");
-        // Write to target table
-        finalMergeDf
+             // Write to target table
+        newRecordsJoinDf
+                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -165,8 +148,7 @@ public class LoadPatientPharmacy {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

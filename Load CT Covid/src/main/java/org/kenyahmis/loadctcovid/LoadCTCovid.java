@@ -83,41 +83,26 @@ public class LoadCTCovid {
         sourceDataFrame.createOrReplaceTempView("source_covid");
         sourceDataFrame.createOrReplaceTempView("target_covid");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_covid t LEFT ANTI JOIN source_covid s ON s.SiteCode <=> t.SiteCode AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_covid s LEFT ANTI JOIN target_covid t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        long newVisitCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newVisitCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        Dataset<Row> mergeDf1 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName," +
+        newRecordsJoinDf = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName," +
                 " VisitID, Covid19AssessmentDate, ReceivedCOVID19Vaccine, DateGivenFirstDose, FirstDoseVaccineAdministered," +
                 " DateGivenSecondDose, SecondDoseVaccineAdministered, VaccinationStatus, VaccineVerification, BoosterGiven," +
                 " BoosterDose, BoosterDoseDate, EverCOVID19Positive, COVID19TestDate, PatientStatus, AdmissionStatus," +
                 " AdmissionUnit, MissedAppointmentDueToCOVID19, COVID19PositiveSinceLasVisit," +
                 " COVID19TestDateSinceLastVisit, PatientStatusSinceLastVisit, AdmissionStatusSinceLastVisit," +
                 " AdmissionStartDate, AdmissionEndDate, AdmissionUnitSinceLastVisit, SupplementalOxygenReceived," +
-                " PatientVentilated, TracingFinalOutcome, CauseOfDeath, CKV, DateImported, BoosterDoseVerified," +
-                " Sequence, COVID19TestResult from final_unmatched");
+                " PatientVentilated, TracingFinalOutcome, CauseOfDeath, DateImported, BoosterDoseVerified," +
+                " Sequence, COVID19TestResult from new_records");
 
-        Dataset<Row> mergeDf2 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName," +
-                " VisitID, Covid19AssessmentDate, ReceivedCOVID19Vaccine, DateGivenFirstDose, FirstDoseVaccineAdministered," +
-                " DateGivenSecondDose, SecondDoseVaccineAdministered, VaccinationStatus, VaccineVerification, BoosterGiven," +
-                " BoosterDose, BoosterDoseDate, EverCOVID19Positive, COVID19TestDate, PatientStatus, AdmissionStatus," +
-                " AdmissionUnit, MissedAppointmentDueToCOVID19, COVID19PositiveSinceLasVisit," +
-                " COVID19TestDateSinceLastVisit, PatientStatusSinceLastVisit, AdmissionStatusSinceLastVisit," +
-                " AdmissionStartDate, AdmissionEndDate, AdmissionUnitSinceLastVisit, SupplementalOxygenReceived," +
-                " PatientVentilated, TracingFinalOutcome, CauseOfDeath, CKV, DateImported, BoosterDoseVerified," +
-                " Sequence, COVID19TestResult from source_covid");
 
-        mergeDf2.printSchema();
-        mergeDf1.printSchema();
-        // Union all records together
-        Dataset<Row> dfMergeFinal = mergeDf1.union(mergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-        dfMergeFinal
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -125,8 +110,7 @@ public class LoadCTCovid {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

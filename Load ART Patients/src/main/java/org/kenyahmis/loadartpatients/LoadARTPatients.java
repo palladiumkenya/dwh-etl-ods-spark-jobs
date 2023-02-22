@@ -161,40 +161,24 @@ public class LoadARTPatients {
         sourceDf.createOrReplaceTempView("source_patients");
         targetDf.createOrReplaceTempView("target_patients");
 
-        // Find rows in target table unmatched in source table
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patients t LEFT ANTI JOIN source_patients s ON s.PatientPK <=> t.PatientPK AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patients s LEFT ANTI JOIN target_patients t ON s.PatientPK <=> t.PatientPK AND" +
                 " s.SiteCode <=> t.SiteCode");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
+        long newVisitCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newVisitCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
-
-        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT" +
+        newRecordsJoinDf = session.sql("SELECT" +
                 " PatientID,PatientPK,SiteCode,FacilityName,AgeEnrollment," +
                 "AgeARTStart,AgeLastVisit,RegistrationDate,PatientSource,Gender,StartARTDate,PreviousARTStartDate," +
                 "PreviousARTRegimen,StartARTAtThisFacility,StartRegimen,StartRegimenLine,LastARTDate,LastRegimen," +
                 "LastRegimenLine,Duration,ExpectedReturn,Provider,LastVisit,ExitReason,ExitDate,Emr," +
-                "Project,DOB,CKV,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf" +
-                " FROM final_unmatched");
-
-        Dataset<Row> sourceMergeDf2 = session.sql("SELECT" +
-                " PatientID,PatientPK,SiteCode,FacilityName,AgeEnrollment," +
-                "AgeARTStart,AgeLastVisit,RegistrationDate,PatientSource,Gender,StartARTDate,PreviousARTStartDate," +
-                "PreviousARTRegimen,StartARTAtThisFacility,StartRegimen,StartRegimenLine,LastARTDate,LastRegimen," +
-                "LastRegimenLine,Duration,ExpectedReturn,Provider,LastVisit,ExitReason,ExitDate,Emr," +
-                "Project,DOB,CKV,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf" +
-                " FROM source_patients");
-
-        sourceDf.printSchema();
-        unmatchedMergeDf1.printSchema();
-
-        Dataset<Row> dfMergeFinal = unmatchedMergeDf1.union(sourceMergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
+                "Project,DOB,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf" +
+                " FROM new_records");
 
         // Write to target table
-        dfMergeFinal
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -202,8 +186,7 @@ public class LoadARTPatients {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

@@ -97,30 +97,18 @@ public class LoadPatientLabs {
         sourceDf.createOrReplaceTempView("source_patient_labs");
         targetDf.createOrReplaceTempView("target_patient_labs");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patient_labs t LEFT ANTI JOIN source_patient_labs s ON s.SiteCode <=> t.SiteCode AND" +
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patient_labs s LEFT ANTI JOIN target_patient_labs t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT PatientID,PatientPK,SiteCode,VisitId,OrderedByDate,ReportedByDate," +
+        newRecordsJoinDf = session.sql("SELECT PatientID,PatientPK,SiteCode,VisitId,OrderedByDate,ReportedByDate," +
                 "       TestName,EnrollmentTest,TestResult,Emr,Project,DateImported,Reason," +
-                "       Created,CKV,DateSampleTaken,SampleType from final_unmatched");
-        Dataset<Row> sourceMergeDf2 = session.sql("SELECT PatientID,PatientPK,SiteCode,VisitId,OrderedByDate,ReportedByDate," +
-                "       TestName,EnrollmentTest,TestResult,Emr,Project,DateImported,Reason," +
-                "       Created,CKV,DateSampleTaken,SampleType from source_patient_labs");
+                "       Created,DateSampleTaken,SampleType from new_records");
 
-        sourceMergeDf2.printSchema();
-        unmatchedMergeDf1.printSchema();
-
-        // Will "update" all rows matched, insert new rows and maintain any unmatched rows
-        Dataset<Row> finalMergeDf = unmatchedMergeDf1.union(sourceMergeDf2);
-        long mergedFinalCount = finalMergeDf.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-        logger.info("Writing final dataframe to target table");
-        // Write to target table
-        finalMergeDf
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -128,8 +116,7 @@ public class LoadPatientLabs {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }
