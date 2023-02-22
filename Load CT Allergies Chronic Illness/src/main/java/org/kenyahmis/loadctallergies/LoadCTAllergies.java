@@ -118,24 +118,17 @@ public class LoadCTAllergies {
         sourceDataFrame.createOrReplaceTempView("source_allergies");
         targetDataFrame.createOrReplaceTempView("target_allergies");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_allergies t LEFT ANTI JOIN source_allergies s ON s.SiteCode <=> t.SiteCode AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_allergies s LEFT ANTI JOIN target_allergies t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
 
-        Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, ChronicIllness, ChronicOnsetDate, knownAllergies, AllergyCausativeAgent, AllergicReaction, AllergySeverity, AllergyOnsetDate, Skin, Eyes, ENT, Chest, CVS, Abdomen, CNS, Genitourinary, DateImported, CKV from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, ChronicIllness, ChronicOnsetDate, knownAllergies, AllergyCausativeAgent, AllergicReaction, AllergySeverity, AllergyOnsetDate, Skin, Eyes, ENT, Chest, CVS, Abdomen, CNS, Genitourinary, DateImported, CKV from source_allergies");
+        long newVisitCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newVisitCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        mergeDf2.printSchema();
-        mergeDf1.printSchema();
-
-        // Union all records together
-        Dataset<Row> dfMergeFinal = mergeDf1.union(mergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-        dfMergeFinal
+        newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, ChronicIllness, ChronicOnsetDate, knownAllergies, AllergyCausativeAgent, AllergicReaction, AllergySeverity, AllergyOnsetDate, Skin, Eyes, ENT, Chest, CVS, Abdomen, CNS, Genitourinary, DateImported from new_records");
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -143,8 +136,7 @@ public class LoadCTAllergies {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

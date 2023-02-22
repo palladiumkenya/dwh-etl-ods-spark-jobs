@@ -75,14 +75,14 @@ public class LoadEnhancedAdherenceCounselling {
         sourceDf.createOrReplaceTempView("source_enhanced_adherence_counselling");
         targetDf.createOrReplaceTempView("target_enhanced_adherence_counselling");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_enhanced_adherence_counselling t LEFT ANTI JOIN source_enhanced_adherence_counselling s ON s.SiteCode <=> t.SiteCode AND" +
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_enhanced_adherence_counselling s LEFT ANTI JOIN target_enhanced_adherence_counselling t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=>t.VisitID");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT PatientID,PatientPK,SiteCode,FacilityName,VisitID," +
+        newRecordsJoinDf = session.sql("SELECT PatientID,PatientPK,SiteCode,FacilityName,VisitID," +
                 "VisitDate,Emr,Project,SessionNumber,DateOfFirstSession,PillCountAdherence,MMAS4_1,MMAS4_2,MMAS4_3," +
                 "MMAS4_4,MMSA8_1,MMSA8_2,MMSA8_3,MMSA8_4,MMSAScore,EACRecievedVL,EACVL,EACVLConcerns,EACVLThoughts," +
                 "EACWayForward,EACCognitiveBarrier,EACBehaviouralBarrier_1,EACBehaviouralBarrier_2," +
@@ -90,30 +90,11 @@ public class LoadEnhancedAdherenceCounselling {
                 "EACEmotionalBarriers_2,EACEconBarrier_1,EACEconBarrier_2,EACEconBarrier_3,EACEconBarrier_4," +
                 "EACEconBarrier_5,EACEconBarrier_6,EACEconBarrier_7,EACEconBarrier_8,EACReviewImprovement," +
                 "EACReviewMissedDoses,EACReviewStrategy,EACReferral,EACReferralApp,EACReferralExperience,EACHomevisit," +
-                "EACAdherencePlan,EACFollowupDate,DateImported,CKV,PatientUnique_ID,EnhancedAdherenceCounsellingUnique_ID" +
-                " FROM final_unmatched");
-
-        Dataset<Row> sourceMergeDf2 = session.sql("SELECT PatientID,PatientPK,SiteCode,FacilityName,VisitID," +
-                "VisitDate,Emr,Project,SessionNumber,DateOfFirstSession,PillCountAdherence,MMAS4_1,MMAS4_2,MMAS4_3," +
-                "MMAS4_4,MMSA8_1,MMSA8_2,MMSA8_3,MMSA8_4,MMSAScore,EACRecievedVL,EACVL,EACVLConcerns,EACVLThoughts," +
-                "EACWayForward,EACCognitiveBarrier,EACBehaviouralBarrier_1,EACBehaviouralBarrier_2," +
-                "EACBehaviouralBarrier_3,EACBehaviouralBarrier_4,EACBehaviouralBarrier_5,EACEmotionalBarriers_1," +
-                "EACEmotionalBarriers_2,EACEconBarrier_1,EACEconBarrier_2,EACEconBarrier_3,EACEconBarrier_4," +
-                "EACEconBarrier_5,EACEconBarrier_6,EACEconBarrier_7,EACEconBarrier_8,EACReviewImprovement," +
-                "EACReviewMissedDoses,EACReviewStrategy,EACReferral,EACReferralApp,EACReferralExperience,EACHomevisit," +
-                "EACAdherencePlan,EACFollowupDate,DateImported,CKV,PatientUnique_ID,EnhancedAdherenceCounsellingUnique_ID" +
-                " FROM source_enhanced_adherence_counselling");
-
-        sourceMergeDf2.printSchema();
-        unmatchedMergeDf1.printSchema();
-
-        Dataset<Row> dfMergeFinal = unmatchedMergeDf1.union(sourceMergeDf2);
-
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
+                "EACAdherencePlan,EACFollowupDate,DateImported,PatientUnique_ID,EnhancedAdherenceCounsellingUnique_ID" +
+                " FROM new_records");
 
         // Write to target table
-        dfMergeFinal
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -121,8 +102,7 @@ public class LoadEnhancedAdherenceCounselling {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

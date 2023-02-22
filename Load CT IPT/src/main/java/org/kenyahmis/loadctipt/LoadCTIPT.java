@@ -78,25 +78,16 @@ public class LoadCTIPT {
         sourceDataFrame.createOrReplaceTempView("source_ipt");
         targetDataFrame.createOrReplaceTempView("target_ipt");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_ipt t LEFT ANTI JOIN source_ipt s ON s.SiteCode <=> t.SiteCode AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_ipt s LEFT ANTI JOIN target_ipt t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, OnTBDrugs, OnIPT, EverOnIPT, Cough, Fever, NoticeableWeightLoss, NightSweats, Lethargy, ICFActionTaken, TestResult, TBClinicalDiagnosis, ContactsInvited, EvaluatedForIPT, StartAntiTBs, TBRxStartDate, TBScreening, IPTClientWorkUp, StartIPT, IndicationForIPT, DateImported, CKV from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, OnTBDrugs, OnIPT, EverOnIPT, Cough, Fever, NoticeableWeightLoss, NightSweats, Lethargy, ICFActionTaken, TestResult, TBClinicalDiagnosis, ContactsInvited, EvaluatedForIPT, StartAntiTBs, TBRxStartDate, TBScreening, IPTClientWorkUp, StartIPT, IndicationForIPT, DateImported, CKV from source_ipt");
-
-        mergeDf2.printSchema();
-        mergeDf1.printSchema();
-
-        // Union all records together
-        Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-        dfMergeFinal.printSchema();
-        dfMergeFinal
+        newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, OnTBDrugs, OnIPT, EverOnIPT, Cough, Fever, NoticeableWeightLoss, NightSweats, Lethargy, ICFActionTaken, TestResult, TBClinicalDiagnosis, ContactsInvited, EvaluatedForIPT, StartAntiTBs, TBRxStartDate, TBScreening, IPTClientWorkUp, StartIPT, IndicationForIPT, DateImported from new_records");
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -104,8 +95,7 @@ public class LoadCTIPT {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

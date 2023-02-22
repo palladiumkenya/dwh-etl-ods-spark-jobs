@@ -132,19 +132,19 @@ public class LoadPatientVisits {
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_visits s LEFT ANTI JOIN " +
                 "target_visits t ON s.PatientPK <=> t.PatientPK AND s.SiteCode <=> t.SiteCode AND s.VisitID <=> t.VisitID ");
 
-        long newVisitCount = newRecordsJoinDf.count();
-        logger.info("New record count is: " + newVisitCount);
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
         // Get matched records
-        if (rtConfig.contains("spark.ods.update") && rtConfig.get("spark.ods.update").equals("yes")) {
-            LoadPatientVisits loadPatientVisits = new LoadPatientVisits();
-            loadPatientVisits.updateMatchedRecords(session, rtConfig);
-        }
+//        if (rtConfig.contains("spark.ods.update") && rtConfig.get("spark.ods.update").equals("yes")) {
+//            LoadPatientVisits loadPatientVisits = new LoadPatientVisits();
+//            loadPatientVisits.updateMatchedRecords(session, rtConfig);
+//        }
 
         newRecordsJoinDf = session.sql("select PatientID,FacilityName,SiteCode,PatientPK,VisitID," +
                 "VisitDate,SERVICE,VisitType,WHOStage,WABStage,Pregnant,LMP,EDD,Height,Weight,BP,OI,OIDate,Adherence," +
-                "AdherenceCategory,FamilyPlanningMethod,PwP,GestationAge,NextAppointmentDate,Emr,Project,CKV," +
+                "AdherenceCategory,FamilyPlanningMethod,PwP,GestationAge,NextAppointmentDate,Emr,Project," +
                 "DifferentiatedCare,StabilityAssessment,KeyPopulationType,PopulationType,VisitBy,Temp,PulseRate," +
                 "RespiratoryRate,OxygenSaturation,Muac,NutritionalStatus,EverHadMenses,Breastfeeding,Menopausal," +
                 "NoFPReason,ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes," +
@@ -172,7 +172,7 @@ public class LoadPatientVisits {
         matchedRecordsDf.createOrReplaceTempView("matched_records");
         matchedRecordsDf = session.sql("select PatientID,FacilityName,SiteCode,PatientPK,VisitID," +
                 "VisitDate,SERVICE,VisitType,WHOStage,WABStage,Pregnant,LMP,EDD,Height,Weight,BP,OI,OIDate,Adherence," +
-                "AdherenceCategory,FamilyPlanningMethod,PwP,GestationAge,NextAppointmentDate,Emr,Project,CKV," +
+                "AdherenceCategory,FamilyPlanningMethod,PwP,GestationAge,NextAppointmentDate,Emr,Project," +
                 "DifferentiatedCare,StabilityAssessment,KeyPopulationType,PopulationType,VisitBy,Temp,PulseRate," +
                 "RespiratoryRate,OxygenSaturation,Muac,NutritionalStatus,EverHadMenses,Breastfeeding,Menopausal," +
                 "NoFPReason,ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes," +
