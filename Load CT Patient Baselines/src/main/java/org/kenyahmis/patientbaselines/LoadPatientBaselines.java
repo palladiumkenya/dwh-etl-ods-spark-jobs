@@ -1,4 +1,4 @@
-package org.kenyahmis.wabwho;
+package org.kenyahmis.patientbaselines;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
@@ -15,30 +15,30 @@ import java.time.LocalDate;
 
 import static org.apache.spark.sql.functions.*;
 
-public class LoadPatientsWABWHO {
-    private static final Logger logger = LoggerFactory.getLogger(LoadPatientsWABWHO.class);
+public class LoadPatientBaselines {
+    private static final Logger logger = LoggerFactory.getLogger(LoadPatientBaselines.class);
 
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
-        conf.setAppName("Load Patients WAB WHO CD4");
+        conf.setAppName("Load Patients Baselines");
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
 
-        final String sourceQueryFileName = "LoadPatientsWABWHOCD4.sql";
+        final String sourceQueryFileName = "LoadPatientBaselines.sql";
         String sourcePatientsQuery;
-        InputStream inputStream = LoadPatientsWABWHO.class.getClassLoader().getResourceAsStream(sourceQueryFileName);
+        InputStream inputStream = LoadPatientBaselines.class.getClassLoader().getResourceAsStream(sourceQueryFileName);
         if (inputStream == null) {
             throw new RuntimeException(sourceQueryFileName + " not found");
         }
         try {
             sourcePatientsQuery = IOUtils.toString(inputStream, Charset.defaultCharset());
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load patients WAB WHO CD4 query from file");
+            throw new RuntimeException("Failed to load patient baselines query from file");
         }
 
-        logger.info("Loading source patient WAB WHO CD4");
+        logger.info("Loading source patient baselines");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.source.url"))
@@ -62,7 +62,7 @@ public class LoadPatientsWABWHO {
 
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
-        logger.info("Loading target WAB WHO CD4");
+        logger.info("Loading target patient baselines");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -75,38 +75,24 @@ public class LoadPatientsWABWHO {
 
         targetDf.persist(StorageLevel.DISK_ONLY());
 
-        sourceDf.createOrReplaceTempView("source_patient_wab_who");
-        targetDf.createOrReplaceTempView("target_patient_wab_who");
+        sourceDf.createOrReplaceTempView("source_patient_baselines");
+        targetDf.createOrReplaceTempView("target_patient_baselines");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patient_wab_who t LEFT ANTI JOIN" +
-                " source_patient_wab_who s ON s.SiteCode <=> t.SiteCode AND" +
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patient_baselines s LEFT ANTI JOIN" +
+                " target_patient_baselines t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT PatientID,SiteCode,bCD4,bCD4Date,bWHO,bWHODate,eCD4," +
+        newRecordsJoinDf = session.sql("SELECT PatientID,SiteCode,bCD4,bCD4Date,bWHO,bWHODate,eCD4," +
                 "eCD4Date,eWHO,eWHODate,lastWHO,lastWHODate,lastCD4,lastCD4Date,m12CD4,m12CD4Date,m6CD4,m6CD4Date," +
-                "PatientPK,Emr,Project FROM final_unmatched");
+                "PatientPK,Emr,Project FROM new_records");
 
-        Dataset<Row> sourceMergeDf2 = session.sql("SELECT PatientID,SiteCode,bCD4,bCD4Date,bWHO,bWHODate,eCD4," +
-                "eCD4Date,eWHO,eWHODate,lastWHO,lastWHODate,lastCD4,lastCD4Date,m12CD4,m12CD4Date,m6CD4,m6CD4Date," +
-                "PatientPK,Emr,Project FROM source_patient_wab_who");
-
-        sourceMergeDf2.printSchema();
-        unmatchedMergeDf1.printSchema();
-
-        // Will "update" all rows matched, insert new rows and maintain any unmatched rows
-        Dataset<Row> finalMergeDf = unmatchedMergeDf1.union(sourceMergeDf2);
-
-        long mergedFinalCount = finalMergeDf.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-
-        logger.info("Writing final dataframe to target table");
         // Write to target table
-        finalMergeDf
+        newRecordsJoinDf
+                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -114,8 +100,7 @@ public class LoadPatientsWABWHO {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }
