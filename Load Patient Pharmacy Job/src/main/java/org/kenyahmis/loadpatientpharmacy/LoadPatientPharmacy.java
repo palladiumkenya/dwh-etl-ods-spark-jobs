@@ -93,7 +93,6 @@ public class LoadPatientPharmacy {
                         .otherwise(col("Project")));
 
         // set values from lookup tables
-
         sourceDf = sourceDf
                 .join(lookupRegimenDf, sourceDf.col("Drug")
                         .equalTo(lookupRegimenDf.col("source_name")), "left")
@@ -131,14 +130,18 @@ public class LoadPatientPharmacy {
 
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
+
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
         newRecordsJoinDf = session.sql("SELECT PatientID,SiteCode,FacilityName,PatientPK,VisitID," +
                 "Drug,DispenseDate,Duration,ExpectedReturn,TreatmentType,PeriodTaken,ProphylaxisType,Emr,Project," +
-                "RegimenLine,RegimenChangedSwitched,RegimenChangeSwitchReason,StopRegimenReason,StopRegimenDate," +
-                "PatientUnique_ID,PatientPharmacyUnique_ID FROM new_records");
+                "RegimenLine,RegimenChangedSwitched,RegimenChangeSwitchReason,StopRegimenReason,StopRegimenDate,PatientPKHash,PatientIDHash" +
+                " FROM new_records");
 
-             // Write to target table
+        // Write to target table
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
