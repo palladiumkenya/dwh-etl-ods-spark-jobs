@@ -75,7 +75,7 @@ public class LoadDrugAlcoholScreening {
         targetDf.createOrReplaceTempView("target_alcohol_drug_screening");
 
         // Get new records
-        Dataset<Row> newRecordsJoinDf = session.sql("SELECT t.* FROM source_alcohol_drug_screening s LEFT ANTI JOIN target_alcohol_drug_screening t ON s.SiteCode <=> t.SiteCode AND" +
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_alcohol_drug_screening s LEFT ANTI JOIN target_alcohol_drug_screening t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
         long newRecordsCount = newRecordsJoinDf.count();
