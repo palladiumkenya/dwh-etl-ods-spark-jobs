@@ -168,6 +168,11 @@ public class LoadCTPatients {
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patients s LEFT ANTI JOIN target_patients t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK");
 
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)))
+                .withColumn("NupiHash", upper(sha2(col("NUPI").cast(DataTypes.StringType), 256)));
+
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
@@ -177,7 +182,8 @@ public class LoadCTPatients {
                 "District,Village,ContactRelation,LastVisit,MaritalStatus,EducationLevel,DateConfirmedHIVPositive," +
                 "PreviousARTExposure,PreviousARTStartDate,Emr,Project,Orphan,Inschool,PatientType,PopulationType," +
                 "KeyPopulationType,PatientResidentCounty,PatientResidentSubCounty,PatientResidentLocation," +
-                "PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation,NUPI" +
+                "PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation,NUPI," +
+                "PatientPKHash,PatientIDHash,NupiHash" +
                 " FROM new_records");
 
         // Write to target table

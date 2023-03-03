@@ -3,6 +3,7 @@ package org.kenyahmis.patientbaselines;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,13 +83,17 @@ public class LoadPatientBaselines {
                 " target_patient_baselines t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK");
 
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
+
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
         newRecordsJoinDf = session.sql("SELECT PatientID,SiteCode,bCD4,bCD4Date,bWHO,bWHODate,eCD4," +
                 "eCD4Date,eWHO,eWHODate,lastWHO,lastWHODate,lastCD4,lastCD4Date,m12CD4,m12CD4Date,m6CD4,m6CD4Date," +
-                "PatientPK,Emr,Project FROM new_records");
+                "PatientPK,Emr,Project,PatientPKHash,PatientIDHash FROM new_records");
 
         // Write to target table
         newRecordsJoinDf
