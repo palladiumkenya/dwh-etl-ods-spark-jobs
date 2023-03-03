@@ -3,6 +3,7 @@ package org.kenyahmis.enhancedadherencecounselling;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,10 @@ public class LoadEnhancedAdherenceCounselling {
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_enhanced_adherence_counselling s LEFT ANTI JOIN target_enhanced_adherence_counselling t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=>t.VisitID");
 
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
+
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
@@ -90,7 +95,8 @@ public class LoadEnhancedAdherenceCounselling {
                 "EACEmotionalBarriers_2,EACEconBarrier_1,EACEconBarrier_2,EACEconBarrier_3,EACEconBarrier_4," +
                 "EACEconBarrier_5,EACEconBarrier_6,EACEconBarrier_7,EACEconBarrier_8,EACReviewImprovement," +
                 "EACReviewMissedDoses,EACReviewStrategy,EACReferral,EACReferralApp,EACReferralExperience,EACHomevisit," +
-                "EACAdherencePlan,EACFollowupDate,DateImported,PatientUnique_ID,EnhancedAdherenceCounsellingUnique_ID" +
+                "EACAdherencePlan,EACFollowupDate,DateImported,PatientUnique_ID,EnhancedAdherenceCounsellingUnique_ID," +
+                "PatientPKHash,PatientIDHash" +
                 " FROM new_records");
 
         // Write to target table

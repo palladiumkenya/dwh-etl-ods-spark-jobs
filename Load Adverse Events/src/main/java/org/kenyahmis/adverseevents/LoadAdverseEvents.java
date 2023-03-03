@@ -3,6 +3,7 @@ package org.kenyahmis.adverseevents;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,6 +135,9 @@ public class LoadAdverseEvents {
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_events s LEFT ANTI JOIN target_events t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK and cast(s.VisitDate as date) <=> t.VisitDate");
 
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
 
         long newAdverseEventsCount = newRecordsJoinDf.count();
         logger.info("New adverse events count is: " + newAdverseEventsCount);
@@ -141,7 +145,7 @@ public class LoadAdverseEvents {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
         newRecordsJoinDf = session.sql("SELECT PatientID,Patientpk, SiteCode,AdverseEvent,AdverseEventStartDate," +
                 "AdverseEventEndDate,Severity,VisitDate,EMR,Project,AdverseEventCause,AdverseEventRegimen,AdverseEventActionTaken," +
-                "AdverseEventClinicalOutcome,AdverseEventIsPregnant,PatientUnique_ID,AdverseEventsUnique_ID,DateImported" +
+                "AdverseEventClinicalOutcome,AdverseEventIsPregnant,PatientUnique_ID,AdverseEventsUnique_ID,DateImported,PatientPKHash,PatientIDHash" +
                 " FROM new_records");
 
         // Write to target table

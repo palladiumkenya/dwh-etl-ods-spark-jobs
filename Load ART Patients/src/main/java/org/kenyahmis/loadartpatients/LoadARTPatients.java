@@ -164,6 +164,9 @@ public class LoadARTPatients {
         // Get new records
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patients s LEFT ANTI JOIN target_patients t ON s.PatientPK <=> t.PatientPK AND" +
                 " s.SiteCode <=> t.SiteCode");
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
 
         long newVisitCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newVisitCount);
@@ -174,7 +177,7 @@ public class LoadARTPatients {
                 "AgeARTStart,AgeLastVisit,RegistrationDate,PatientSource,Gender,StartARTDate,PreviousARTStartDate," +
                 "PreviousARTRegimen,StartARTAtThisFacility,StartRegimen,StartRegimenLine,LastARTDate,LastRegimen," +
                 "LastRegimenLine,Duration,ExpectedReturn,Provider,LastVisit,ExitReason,ExitDate,Emr," +
-                "Project,DOB,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf" +
+                "Project,DOB,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf,PatientPKHash,PatientIDHash" +
                 " FROM new_records");
 
         // Write to target table

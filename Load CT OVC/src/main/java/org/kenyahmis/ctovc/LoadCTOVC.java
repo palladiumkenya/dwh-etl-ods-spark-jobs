@@ -3,6 +3,7 @@ package org.kenyahmis.ctovc;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 
-import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.*;
 
 public class LoadCTOVC {
     private static final Logger logger = LoggerFactory.getLogger(LoadCTOVC.class);
@@ -72,11 +73,18 @@ public class LoadCTOVC {
         // Get new records
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_ovc s LEFT ANTI JOIN target_ovc t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
+
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
+
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, OVCEnrollmentDate, RelationshipToClient, EnrolledinCPIMS, CPIMSUniqueIdentifier, PartnerOfferingOVCServices, OVCExitReason, ExitDate, DateImported from new_records");
+        newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate," +
+                " Emr, Project, OVCEnrollmentDate, RelationshipToClient, EnrolledinCPIMS, CPIMSUniqueIdentifier," +
+                " PartnerOfferingOVCServices, OVCExitReason, ExitDate, DateImported,PatientPKHash,PatientIDHash from new_records");
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))

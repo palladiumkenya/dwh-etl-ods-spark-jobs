@@ -3,6 +3,7 @@ package org.kenyahmis.loadctcovid;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +88,10 @@ public class LoadCTCovid {
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_covid s LEFT ANTI JOIN target_covid t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
+
         long newVisitCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newVisitCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
@@ -99,7 +104,7 @@ public class LoadCTCovid {
                 " COVID19TestDateSinceLastVisit, PatientStatusSinceLastVisit, AdmissionStatusSinceLastVisit," +
                 " AdmissionStartDate, AdmissionEndDate, AdmissionUnitSinceLastVisit, SupplementalOxygenReceived," +
                 " PatientVentilated, TracingFinalOutcome, CauseOfDeath, DateImported, BoosterDoseVerified," +
-                " Sequence, COVID19TestResult from new_records");
+                " Sequence, COVID19TestResult,PatientPKHash,PatientIDHash from new_records");
 
 
         newRecordsJoinDf

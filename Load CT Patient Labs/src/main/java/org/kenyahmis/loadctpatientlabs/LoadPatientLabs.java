@@ -100,13 +100,17 @@ public class LoadPatientLabs {
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patient_labs s LEFT ANTI JOIN target_patient_labs t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
+
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
         newRecordsJoinDf = session.sql("SELECT PatientID,PatientPK,SiteCode,VisitId,OrderedByDate,ReportedByDate," +
                 "       TestName,EnrollmentTest,TestResult,Emr,Project,DateImported,Reason," +
-                "       Created,DateSampleTaken,SampleType from new_records");
+                "       Created,DateSampleTaken,SampleType,PatientPKHash,PatientIDHash from new_records");
 
         newRecordsJoinDf
                 .write()

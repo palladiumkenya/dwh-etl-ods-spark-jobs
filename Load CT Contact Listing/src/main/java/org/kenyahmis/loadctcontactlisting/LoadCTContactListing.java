@@ -3,6 +3,7 @@ package org.kenyahmis.loadctcontactlisting;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,32 +91,24 @@ public class LoadCTContactListing {
         targetDataFrame.createOrReplaceTempView("target_listing");
         sourceDataFrame.createOrReplaceTempView("source_listing");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_listing t LEFT ANTI JOIN source_listing s ON s.SiteCode <=> t.SiteCode AND" +
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_listing s LEFT ANTI JOIN target_listing t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK");
 
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)))
+                .withColumn("ContactPatientPKHash", upper(sha2(col("ContactPatientPK").cast(DataTypes.StringType), 256)));
+        long newVisitCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newVisitCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project," +
+        newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project," +
                 " PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient," +
                 " ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient," +
-                " KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated," +
-                " PatientUnique_ID,ContactListingUnique_ID from final_unmatched");
+                " KnowledgeOfHivStatus, PnsApproach, DateImported, ContactPatientPK, DateCreated," +
+                " PatientUnique_ID,ContactListingUnique_ID,PatientPKHash,PatientIDHash,ContactPatientPKHash from new_records");
 
-        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project," +
-                " PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient," +
-                " ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient," +
-                " KnowledgeOfHivStatus, PnsApproach, DateImported, CKV, ContactPatientPK, DateCreated," +
-                " PatientUnique_ID,ContactListingUnique_ID from source_listing");
-
-        mergeDf2.printSchema();
-        mergeDf1.printSchema();
-
-        // Union all records together
-        Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-        dfMergeFinal
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -123,8 +116,7 @@ public class LoadCTContactListing {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }
