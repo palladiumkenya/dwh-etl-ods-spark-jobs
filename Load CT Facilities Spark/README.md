@@ -17,7 +17,7 @@ $ mvn clean install
 Submit the application to begin the job. Note that this command should be run from the desired spark driver.
 
 ```bash
-./bin/spark-submit --class org.kenyahmis.loadfacilities.LoadFacilities \
+./bin/spark-submit --class LoadFacilities \
 --master spark://<spark-master>:7077 \
 --deploy-mode client \
 --conf spark.source.database-name='<db_name>' \
