@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.kenyahmis</groupId>
+    <artifactId>ods-spark-jobs</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <modules>
+        <module>Load CT Adverse Events</module>
+        <module>Load CT Allergies Chronic Illness</module>
+        <module>Load CT ART Patients</module>
+        <module>Load CT Contact Listing</module>
+        <module>Load CT Covid</module>
+        <module>Load CT Defaulter Tracing</module>
+        <module>Load CT Depression Screening</module>
+        <module>Load CT Drug Alcohol Screening</module>
+        <module>Load CT Enhanced Adherence Counselling</module>
+        <module>Load CT GBV Screening</module>
+        <module>Load CT IPT</module>
+        <module>Load CT OTZ</module>
+        <module>Load CT OVC</module>
+        <module>Load CT Patient Baselines</module>
+        <module>Load CT Patient Labs</module>
+        <module>Load CT Patient Pharmacy</module>
+        <module>Load CT Patient Status</module>
+        <module>Load CT Patient Visits</module>
+        <module>Load CT Patients Job</module>
+        <module>Load CT Facilities Spark</module>
+        <module>Load Historical ART Outcome Base Table</module>
+        <module>Load HTS Clients</module>
+        <module>Load HTS Client Tests</module>
+        <module>Load HTS Client Linkages</module>
+        <module>Load HTS Client Tracing</module>
+        <module>Load HTS Eligibility</module>
+        <module>Load HTS Partner Notification Services</module>
+        <module>Load HTS Partner Tracing</module>
+        <module>Load HTS Test Kits</module>
+        <module>Load MNCH ANC Visits</module>
+        <module>Load MNCH Arts</module>
+        <module>Load MNCH Cwc Enrolments</module>
+        <module>Load MNCH Cwc Visits</module>
+        <module>Load MNCH Enrolments</module>
+        <module>Load MNCH Heis</module>
+        <module>Load MNCH Labs</module>
+        <module>Load MNCH Mat Visits</module>
+        <module>Load MNCH Mother Baby Pairs</module>
+        <module>Load MNCH Patients</module>
+        <module>Load MNCH Pnc Visits</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-core -->
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-core_2.13</artifactId>
+                <version>${spark.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-sql -->
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-sql_2.13</artifactId>
+                <version>${spark.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc -->
+            <dependency>
+                <groupId>com.microsoft.sqlserver</groupId>
+                <artifactId>mssql-jdbc</artifactId>
+                <version>11.2.1.jre8</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    <properties>
+        <java.version>1.8</java.version>
+        <spark.version>3.3.0</spark.version>
+    </properties>
+</project>

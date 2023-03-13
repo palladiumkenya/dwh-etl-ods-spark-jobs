@@ -164,41 +164,31 @@ public class LoadCTPatients {
         sourceDf.createOrReplaceTempView("source_patients");
         targetDf.createOrReplaceTempView("target_patients");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_patients t LEFT ANTI JOIN source_patients s ON s.SiteCode <=> t.SiteCode AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patients s LEFT ANTI JOIN target_patients t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)))
+                .withColumn("NupiHash", upper(sha2(col("NUPI").cast(DataTypes.StringType), 256)));
 
-        Dataset<Row> unmatchedMergeDf1 = session.sql("SELECT Id,PatientID,PatientPK,SiteCode,FacilityName,Gender," +
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
+
+        newRecordsJoinDf = session.sql("SELECT Id,PatientID,PatientPK,SiteCode,FacilityName,Gender," +
                 "DOB,RegistrationDate,RegistrationAtCCC,RegistrationAtPMTCT,RegistrationAtTBClinic,PatientSource,Region," +
                 "District,Village,ContactRelation,LastVisit,MaritalStatus,EducationLevel,DateConfirmedHIVPositive," +
                 "PreviousARTExposure,PreviousARTStartDate,Emr,Project,Orphan,Inschool,PatientType,PopulationType," +
                 "KeyPopulationType,PatientResidentCounty,PatientResidentSubCounty,PatientResidentLocation," +
-                "PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation,NUPI,CKV" +
-                " FROM final_unmatched");
+                "PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation,NUPI," +
+                "PatientPKHash,PatientIDHash,NupiHash" +
+                " FROM new_records");
 
-        Dataset<Row> sourceMergeDf2 = session.sql("SELECT Id,PatientID,PatientPK,SiteCode,FacilityName,Gender," +
-                "DOB,RegistrationDate,RegistrationAtCCC,RegistrationAtPMTCT,RegistrationAtTBClinic,PatientSource,Region," +
-                "District,Village,ContactRelation,LastVisit,MaritalStatus,EducationLevel,DateConfirmedHIVPositive," +
-                "PreviousARTExposure,PreviousARTStartDate,Emr,Project,Orphan,Inschool,PatientType,PopulationType," +
-                "KeyPopulationType,PatientResidentCounty,PatientResidentSubCounty,PatientResidentLocation," +
-                "PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation,NUPI,CKV" +
-                " FROM source_patients");
-
-        sourceMergeDf2.printSchema();
-        unmatchedMergeDf1.printSchema();
-
-        // Will "update" all rows matched, insert new rows and maintain any unmatched rows
-        Dataset<Row> finalMergeDf = sourceMergeDf2.union(unmatchedMergeDf1);
-
-        long mergedFinalCount = finalMergeDf.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-
-        logger.info("Writing final dataframe to target table");
         // Write to target table
-        finalMergeDf
+        newRecordsJoinDf
+                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -206,8 +196,7 @@ public class LoadCTPatients {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

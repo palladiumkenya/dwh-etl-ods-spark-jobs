@@ -3,6 +3,7 @@ package org.kenyahmis.loadctdefaultertracing;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+
+import static org.apache.spark.sql.functions.*;
+import static org.apache.spark.sql.functions.col;
 
 public class LoadCTDefaulterTracing {
     private static final Logger logger = LoggerFactory.getLogger(LoadCTDefaulterTracing.class);
@@ -63,24 +67,24 @@ public class LoadCTDefaulterTracing {
         sourceDataFrame.createOrReplaceTempView("source_defaulter_tracing");
         targetDataFrame.createOrReplaceTempView("target_defaulter_tracing");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_defaulter_tracing t LEFT ANTI JOIN source_defaulter_tracing s ON s.SiteCode <=> t.SiteCode AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_defaulter_tracing s LEFT ANTI JOIN target_defaulter_tracing t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
 
-        Dataset<Row> mergeDf1 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID, VisitDate, EncounterId, TracingType, TracingOutcome, AttemptNumber, IsFinalTrace, TrueStatus, CauseOfDeath, Comments, BookingDate, CKV, DateImported from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID, VisitDate, EncounterId, TracingType, TracingOutcome, AttemptNumber, IsFinalTrace, TrueStatus, CauseOfDeath, Comments, BookingDate, CKV, DateImported from source_defaulter_tracing");
+        long newVisitCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newVisitCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        mergeDf2.printSchema();
-        mergeDf1.printSchema();
+        newRecordsJoinDf = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID," +
+                " VisitDate, EncounterId, TracingType, TracingOutcome, AttemptNumber, IsFinalTrace, TrueStatus, CauseOfDeath," +
+                " Comments, BookingDate, DateImported,PatientPKHash,PatientIDHash from new_records");
 
-        // Union all records together
-        Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-        dfMergeFinal
+        newRecordsJoinDf
+                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -88,8 +92,7 @@ public class LoadCTDefaulterTracing {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }

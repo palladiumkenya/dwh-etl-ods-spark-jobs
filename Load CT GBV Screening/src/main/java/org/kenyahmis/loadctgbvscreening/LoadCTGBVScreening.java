@@ -3,12 +3,16 @@ package org.kenyahmis.loadctgbvscreening;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+
+import static org.apache.spark.sql.functions.*;
+import static org.apache.spark.sql.functions.col;
 
 public class LoadCTGBVScreening {
     private static final Logger logger = LoggerFactory.getLogger(LoadCTGBVScreening.class);
@@ -61,25 +65,22 @@ public class LoadCTGBVScreening {
         sourceDataFrame.createOrReplaceTempView("source_gbv_screening");
         targetDataFrame.createOrReplaceTempView("target_gbv_screening");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_gbv_screening t LEFT ANTI JOIN source_gbv_screening s ON s.SiteCode <=> t.SiteCode AND" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_gbv_screening s LEFT ANTI JOIN target_gbv_screening t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND t.SiteCode = s.SiteCode AND s.VisitID <=> t.VisitID");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        // Hash PII columns
+        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
 
+        long newRecordCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        Dataset<Row> mergeDf1 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, IPV, PhysicalIPV, EmotionalIPV, SexualIPV, IPVRelationship, DateImported, CKV from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr, Project, IPV, PhysicalIPV, EmotionalIPV, SexualIPV, IPVRelationship, DateImported, CKV from source_gbv_screening");
-
-        mergeDf2.printSchema();
-        mergeDf1.printSchema();
-
-        // Union all records together
-        Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-        dfMergeFinal
+        newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate," +
+                " Emr, Project, IPV, PhysicalIPV, EmotionalIPV, SexualIPV, IPVRelationship, DateImported," +
+                "PatientPKHash,PatientIDHash from new_records");
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.sink.url"))
@@ -87,8 +88,7 @@ public class LoadCTGBVScreening {
                 .option("user", rtConfig.get("spark.sink.user"))
                 .option("password", rtConfig.get("spark.sink.password"))
                 .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .mode(SaveMode.Append)
                 .save();
     }
 }
