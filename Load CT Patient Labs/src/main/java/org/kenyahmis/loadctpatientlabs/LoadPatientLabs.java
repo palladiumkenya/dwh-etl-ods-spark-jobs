@@ -109,7 +109,7 @@ public class LoadPatientLabs {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
         newRecordsJoinDf = session.sql("SELECT PatientID,PatientPK,SiteCode,VisitId,OrderedByDate,ReportedByDate," +
-                "       TestName,EnrollmentTest,TestResult,Emr,Project,DateImported,Reason," +
+                "       TestName,EnrollmentTest,TestResult,Emr,Project,Reason," +
                 "       Created,DateSampleTaken,SampleType,PatientPKHash,PatientIDHash from new_records");
 
         newRecordsJoinDf

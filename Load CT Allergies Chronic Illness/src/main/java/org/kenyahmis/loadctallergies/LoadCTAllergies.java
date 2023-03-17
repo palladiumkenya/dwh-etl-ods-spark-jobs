@@ -134,7 +134,7 @@ public class LoadCTAllergies {
         newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate, Emr," +
                 " Project, ChronicIllness, ChronicOnsetDate, knownAllergies, AllergyCausativeAgent, AllergicReaction," +
                 " AllergySeverity, AllergyOnsetDate, Skin, Eyes, ENT, Chest, CVS, Abdomen, CNS, Genitourinary," +
-                " DateImported,PatientPKHash,PatientIDHash from new_records");
+                " PatientPKHash,PatientIDHash from new_records");
         newRecordsJoinDf
                 .write()
                 .format("jdbc")

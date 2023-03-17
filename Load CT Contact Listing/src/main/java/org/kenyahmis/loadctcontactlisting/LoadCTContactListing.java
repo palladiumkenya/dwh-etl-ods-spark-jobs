@@ -105,8 +105,8 @@ public class LoadCTContactListing {
         newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, Emr, Project," +
                 " PartnerPersonID, ContactAge, ContactSex, ContactMaritalStatus, RelationshipWithPatient," +
                 " ScreenedForIpv, IpvScreening, IPVScreeningOutcome, CurrentlyLivingWithIndexClient," +
-                " KnowledgeOfHivStatus, PnsApproach, DateImported, ContactPatientPK, DateCreated," +
-                " PatientUnique_ID,ContactListingUnique_ID,PatientPKHash,PatientIDHash,ContactPatientPKHash from new_records");
+                " KnowledgeOfHivStatus, PnsApproach, ContactPatientPK, DateCreated," +
+                " PatientPKHash,PatientIDHash,ContactPatientPKHash from new_records");
 
         newRecordsJoinDf
                 .write()

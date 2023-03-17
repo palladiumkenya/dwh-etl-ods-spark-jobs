@@ -95,7 +95,7 @@ public class LoadEnhancedAdherenceCounselling {
                 "EACEmotionalBarriers_2,EACEconBarrier_1,EACEconBarrier_2,EACEconBarrier_3,EACEconBarrier_4," +
                 "EACEconBarrier_5,EACEconBarrier_6,EACEconBarrier_7,EACEconBarrier_8,EACReviewImprovement," +
                 "EACReviewMissedDoses,EACReviewStrategy,EACReferral,EACReferralApp,EACReferralExperience,EACHomevisit," +
-                "EACAdherencePlan,EACFollowupDate,DateImported,PatientUnique_ID,EnhancedAdherenceCounsellingUnique_ID," +
+                "EACAdherencePlan,EACFollowupDate," +
                 "PatientPKHash,PatientIDHash" +
                 " FROM new_records");
 

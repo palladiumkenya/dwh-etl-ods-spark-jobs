@@ -40,12 +40,12 @@ public class LoadHtsPartnerTracing {
         logger.info("Loading hts partner tracing");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.dwapicentral.url"))
-                .option("driver", rtConfig.get("spark.dwapicentral.driver"))
-                .option("user", rtConfig.get("spark.dwapicentral.user"))
-                .option("password", rtConfig.get("spark.dwapicentral.password"))
+                .option("url", rtConfig.get("spark.htscentral.url"))
+                .option("driver", rtConfig.get("spark.htscentral.driver"))
+                .option("user", rtConfig.get("spark.htscentral.user"))
+                .option("password", rtConfig.get("spark.htscentral.password"))
                 .option("query", sourceQuery)
-                .option("numpartitions", rtConfig.get("spark.dwapicentral.numpartitions"))
+                .option("numpartitions", rtConfig.get("spark.htscentral.numpartitions"))
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 

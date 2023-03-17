@@ -49,6 +49,13 @@
         <module>Load MNCH Mother Baby Pairs</module>
         <module>Load MNCH Patients</module>
         <module>Load MNCH Pnc Visits</module>
+        <module>Load PrEP Adverse Events</module>
+        <module>Load Prep Behaviour Risk</module>
+        <module>Load Prep Care Termination</module>
+        <module>Load Prep Lab</module>
+        <module>Load Prep Patient</module>
+        <module>Load Prep Pharmacy</module>
+        <module>Load Prep Visits</module>
     </modules>
 
     <dependencyManagement>
