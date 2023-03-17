@@ -70,9 +70,9 @@ public class LoadARTPatients {
                 .option("dbtable", rtConfig.get("spark.lookup.regimen"))
                 .load();
 
-        Dataset previousRegimenLookup = lookupRegimenDf.alias("previous_regimen_lookup");
-        Dataset lastRegimenLookup = lookupRegimenDf.alias("last_regimen_lookup");
-        Dataset startRegimenLookup = lookupRegimenDf.alias("start_regimen_lookup");
+        Dataset<Row> previousRegimenLookup = lookupRegimenDf.alias("previous_regimen_lookup");
+        Dataset<Row> lastRegimenLookup = lookupRegimenDf.alias("last_regimen_lookup");
+        Dataset<Row> startRegimenLookup = lookupRegimenDf.alias("start_regimen_lookup");
 
         Dataset<Row> lookupPatientSourceDf = session.read()
                 .format("jdbc")

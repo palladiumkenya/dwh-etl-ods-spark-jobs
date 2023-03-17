@@ -81,7 +81,7 @@ public class LoadCTDefaulterTracing {
 
         newRecordsJoinDf = session.sql("select PatientPK, PatientID, Emr, Project, SiteCode, FacilityName, VisitID," +
                 " VisitDate, EncounterId, TracingType, TracingOutcome, AttemptNumber, IsFinalTrace, TrueStatus, CauseOfDeath," +
-                " Comments, BookingDate, DateImported,PatientPKHash,PatientIDHash from new_records");
+                " Comments, BookingDate,PatientPKHash,PatientIDHash from new_records");
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))

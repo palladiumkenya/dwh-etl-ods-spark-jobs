@@ -93,7 +93,7 @@ public class LoadCTOTZ {
 
         newRecordsJoinDf = session.sql("select PatientID,PatientPK,SiteCode,FacilityName,VisitID,VisitDate,Emr," +
                 "Project,OTZEnrollmentDate,TransferInStatus,ModulesPreviouslyCovered,ModulesCompletedToday," +
-                "SupportGroupInvolvement,Remarks,TransitionAttritionReason,OutcomeDate,DateImported,PatientPKHash,PatientIDHash from new_records");
+                "SupportGroupInvolvement,Remarks,TransitionAttritionReason,OutcomeDate,PatientPKHash,PatientIDHash from new_records");
         newRecordsJoinDf
                 .write()
                 .format("jdbc")

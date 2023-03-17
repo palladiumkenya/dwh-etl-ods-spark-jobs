@@ -79,7 +79,7 @@ public class LoadDepressionScreening {
 
         newRecordsJoinDf = session.sql("SELECT PatientID,PatientPK,SiteCode,FacilityName,VisitID," +
                 "VisitDate,Emr,Project,PHQ9_1,PHQ9_2,PHQ9_3,PHQ9_4,PHQ9_5,PHQ9_6,PHQ9_7,PHQ9_8,PHQ9_9,PHQ_9_rating," +
-                "DepressionAssesmentScore,DateImported,PatientUnique_ID,DepressionScreeningUnique_ID,PatientPKHash,PatientIDHash" +
+                "DepressionAssesmentScore,PatientPKHash,PatientIDHash" +
                 " FROM new_records");
 
 

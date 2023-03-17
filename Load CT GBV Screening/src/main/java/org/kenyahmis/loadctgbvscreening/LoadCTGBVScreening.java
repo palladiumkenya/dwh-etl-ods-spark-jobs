@@ -78,7 +78,7 @@ public class LoadCTGBVScreening {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
         newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate," +
-                " Emr, Project, IPV, PhysicalIPV, EmotionalIPV, SexualIPV, IPVRelationship, DateImported," +
+                " Emr, Project, IPV, PhysicalIPV, EmotionalIPV, SexualIPV, IPVRelationship," +
                 "PatientPKHash,PatientIDHash from new_records");
         newRecordsJoinDf
                 .write()

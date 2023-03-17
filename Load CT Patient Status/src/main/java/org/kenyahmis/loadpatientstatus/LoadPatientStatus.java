@@ -91,7 +91,7 @@ public class LoadPatientStatus {
 
         newRecordsJoinDf = session.sql("SELECT PatientID,SiteCode,FacilityName,ExitDescription,ExitDate,ExitReason," +
                 "    PatientPK,Emr,Project,TOVerified,TOVerifiedDate,ReEnrollmentDate," +
-                "    DeathDate,PatientUnique_ID,PatientStatusUnique_ID,PatientPKHash,PatientIDHash" +
+                "    DeathDate,PatientPKHash,PatientIDHash" +
                 " FROM new_records");
 
         newRecordsJoinDf

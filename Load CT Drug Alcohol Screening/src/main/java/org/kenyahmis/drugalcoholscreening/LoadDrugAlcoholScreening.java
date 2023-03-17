@@ -88,7 +88,7 @@ public class LoadDrugAlcoholScreening {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
         newRecordsJoinDf = session.sql("SELECT PatientID,PatientPK,SiteCode,FacilityName,VisitID," +
-                "VisitDate,Emr,Project,DrinkingAlcohol,Smoking,DrugUse,DateImported,PatientUnique_ID,DrugAlcoholScreeningUnique_ID," +
+                "VisitDate,Emr,Project,DrinkingAlcohol,Smoking,DrugUse," +
                 "PatientPKHash,PatientIDHash" +
                 " FROM new_records");
 

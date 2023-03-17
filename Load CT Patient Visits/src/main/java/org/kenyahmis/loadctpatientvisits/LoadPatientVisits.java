@@ -152,7 +152,7 @@ public class LoadPatientVisits {
                 "DifferentiatedCare,StabilityAssessment,KeyPopulationType,PopulationType,VisitBy,Temp,PulseRate," +
                 "RespiratoryRate,OxygenSaturation,Muac,NutritionalStatus,EverHadMenses,Breastfeeding,Menopausal," +
                 "NoFPReason,ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes," +
-                "PatientUnique_ID,PatientVisitUnique_ID,PatientPKHash,PatientIDHash from new_records");
+                "PatientPKHash,PatientIDHash from new_records");
 
         // TODO test out removeDuplicates() before Nov launch
         newRecordsJoinDf

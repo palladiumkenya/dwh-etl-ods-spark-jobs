@@ -84,7 +84,7 @@ public class LoadCTOVC {
 
         newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate," +
                 " Emr, Project, OVCEnrollmentDate, RelationshipToClient, EnrolledinCPIMS, CPIMSUniqueIdentifier," +
-                " PartnerOfferingOVCServices, OVCExitReason, ExitDate, DateImported,PatientPKHash,PatientIDHash from new_records");
+                " PartnerOfferingOVCServices, OVCExitReason, ExitDate,PatientPKHash,PatientIDHash from new_records");
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))

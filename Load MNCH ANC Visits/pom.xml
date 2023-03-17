@@ -46,7 +46,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.kenyahmis.htstestkits.LoadHtsTestKits</mainClass>
+                            <mainClass>org.kenyahmis.mnchancvisits.LoadMnchAncVisits</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

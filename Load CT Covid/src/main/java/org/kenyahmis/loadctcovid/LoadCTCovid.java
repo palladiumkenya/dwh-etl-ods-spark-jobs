@@ -103,7 +103,7 @@ public class LoadCTCovid {
                 " AdmissionUnit, MissedAppointmentDueToCOVID19, COVID19PositiveSinceLasVisit," +
                 " COVID19TestDateSinceLastVisit, PatientStatusSinceLastVisit, AdmissionStatusSinceLastVisit," +
                 " AdmissionStartDate, AdmissionEndDate, AdmissionUnitSinceLastVisit, SupplementalOxygenReceived," +
-                " PatientVentilated, TracingFinalOutcome, CauseOfDeath, DateImported, BoosterDoseVerified," +
+                " PatientVentilated, TracingFinalOutcome, CauseOfDeath, BoosterDoseVerified," +
                 " Sequence, COVID19TestResult,PatientPKHash,PatientIDHash from new_records");
 
 

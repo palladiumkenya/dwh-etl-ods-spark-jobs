@@ -94,7 +94,7 @@ public class LoadCTIPT {
         newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate," +
                 " Emr, Project, OnTBDrugs, OnIPT, EverOnIPT, Cough, Fever, NoticeableWeightLoss, NightSweats, Lethargy," +
                 " ICFActionTaken, TestResult, TBClinicalDiagnosis, ContactsInvited, EvaluatedForIPT, StartAntiTBs," +
-                " TBRxStartDate, TBScreening, IPTClientWorkUp, StartIPT, IndicationForIPT, DateImported,PatientPKHash,PatientIDHash from new_records");
+                " TBRxStartDate, TBScreening, IPTClientWorkUp, StartIPT, IndicationForIPT,PatientPKHash,PatientIDHash from new_records");
         newRecordsJoinDf
                 .write()
                 .format("jdbc")

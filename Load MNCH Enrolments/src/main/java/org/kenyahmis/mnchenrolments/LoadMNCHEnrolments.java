@@ -40,12 +40,12 @@ public class LoadMNCHEnrolments {
         logger.info("Loading source mnch enrolments");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.dwapicentral.url"))
-                .option("driver", rtConfig.get("spark.dwapicentral.driver"))
-                .option("user", rtConfig.get("spark.dwapicentral.user"))
-                .option("password", rtConfig.get("spark.dwapicentral.password"))
+                .option("url", rtConfig.get("spark.mnchcentral.url"))
+                .option("driver", rtConfig.get("spark.mnchcentral.driver"))
+                .option("user", rtConfig.get("spark.mnchcentral.user"))
+                .option("password", rtConfig.get("spark.mnchcentral.password"))
                 .option("query", sourceQuery)
-                .option("numpartitions", rtConfig.get("spark.dwapicentral.numpartitions"))
+                .option("numpartitions", rtConfig.get("spark.mnchcentral.numpartitions"))
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 

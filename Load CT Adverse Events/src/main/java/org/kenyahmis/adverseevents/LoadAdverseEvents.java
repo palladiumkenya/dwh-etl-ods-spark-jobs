@@ -145,7 +145,7 @@ public class LoadAdverseEvents {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
         newRecordsJoinDf = session.sql("SELECT PatientID,Patientpk, SiteCode,AdverseEvent,AdverseEventStartDate," +
                 "AdverseEventEndDate,Severity,VisitDate,EMR,Project,AdverseEventCause,AdverseEventRegimen,AdverseEventActionTaken," +
-                "AdverseEventClinicalOutcome,AdverseEventIsPregnant,PatientUnique_ID,AdverseEventsUnique_ID,DateImported,PatientPKHash,PatientIDHash" +
+                "AdverseEventClinicalOutcome,AdverseEventIsPregnant,PatientPKHash,PatientIDHash" +
                 " FROM new_records");
 
         // Write to target table
