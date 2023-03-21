@@ -40,57 +40,47 @@ public class LoadFacilities {
         logger.info("Loading source facilities data frame");
         Dataset<Row> sourceDataFrame = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.source.url"))
-                .option("driver", rtConfig.get("spark.source.driver"))
-                .option("user", rtConfig.get("spark.source.user"))
-                .option("password", rtConfig.get("spark.source.password"))
+                .option("url", rtConfig.get("spark.his.url"))
+                .option("driver", rtConfig.get("spark.his.driver"))
+                .option("user", rtConfig.get("spark.his.user"))
+                .option("password", rtConfig.get("spark.his.password"))
                 .option("query", query)
-                .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
                 .load();
 
         sourceDataFrame.persist(StorageLevel.MEMORY_ONLY());
         logger.info("Loading target facilities data frame");
         Dataset<Row> targetDataFrame = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("numpartitions", rtConfig.get("spark.sink.numpartitions"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
                 .load();
         targetDataFrame.persist(StorageLevel.MEMORY_ONLY());
 
         sourceDataFrame.createOrReplaceTempView("source_facilities");
         targetDataFrame.createOrReplaceTempView("target_facilities");
 
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_facilities t LEFT ANTI JOIN source_facilities s ON s.MFL_Code <=> t.MFL_Code");
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_facilities s LEFT ANTI JOIN target_facilities t ON s.MFL_Code <=> t.MFL_Code");
 
-        long unmatchedVisitCount = unmatchedFromJoinDf.count();
-        logger.info("Unmatched count after target join is: " + unmatchedVisitCount);
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
+        long newRecordsCount = newRecordsJoinDf.count();
+        logger.info("New record count is: " + newRecordsCount);
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        Dataset<Row> mergeDf1 = session.sql("select MFL_Code, `Facility Name`, County, SubCounty, Owner, Latitude, Longitude, SDP,`SDP Agency`, EMR, `EMR Status`, `HTS Use`, `HTS Deployment`, `HTS Status`, `IL Status`, BOOLEAN(`Registration IE`), BOOLEAN(`Pharmacy IE`), mlab, Ushauri, Nishauri, OVC, OTZ, PrEP, 3PM, AIR, KP, MCH, TB,`Lab Manifest` from final_unmatched");
-        Dataset<Row> mergeDf2 = session.sql("select MFL_Code, `Facility Name`, County, SubCounty, Owner, Latitude, Longitude, SDP,`SDP Agency`, EMR, `EMR Status`, `HTS Use`, `HTS Deployment`,`HTS Status`, `IL Status`, BOOLEAN(`Registration IE`), BOOLEAN(`Pharmacy IE`), STRING(mlab), STRING(Ushauri), STRING(Nishauri), STRING(OVC), STRING(OTZ), STRING(PrEP), STRING(3PM), STRING(AIR), STRING(KP), STRING(MCH), STRING(TB), STRING(`Lab Manifest`) from source_facilities");
-
-        mergeDf2.printSchema();
-        mergeDf1.printSchema();
-
-        // Union all records together
-        Dataset<Row> dfMergeFinal = mergeDf1.unionAll(mergeDf2);
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-
-        dfMergeFinal
+        newRecordsJoinDf = session.sql("select MFL_Code,Facility_Name,County,SubCounty,Owner,Latitude," +
+                "Longitude,SDP,SDP_Agency,Implementation,EMR,EMR_Status,HTS_Use,HTS_Deployment,HTS_Status," +
+                "IL_Status,Registration_IE,Phamarmacy_IE,mlab,Ushauri,Nishauri,Appointment_Management_IE,OVC," +
+                "OTZ,PrEP,`_3PM`,AIR,KP,MCH,TB,Lab_Manifest,Comments,Project from new_records");
+        newRecordsJoinDf
                 .write()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("truncate", "true")
-                .mode(SaveMode.Overwrite)
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .mode(SaveMode.Append)
                 .save();
     }
 }
