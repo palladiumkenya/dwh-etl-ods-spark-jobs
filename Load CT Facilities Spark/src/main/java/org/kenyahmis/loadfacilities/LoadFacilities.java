@@ -23,6 +23,7 @@ public class LoadFacilities {
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
 
+        final String odsTable = "dbo.ALL_EMRSites";
         final String queryFileName = "LoadSites.sql";
         String query;
         InputStream inputStream = LoadFacilities.class.getClassLoader().getResourceAsStream(queryFileName);
@@ -55,7 +56,7 @@ public class LoadFacilities {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", odsTable)
                 .load();
         targetDataFrame.persist(StorageLevel.MEMORY_ONLY());
 
@@ -79,7 +80,7 @@ public class LoadFacilities {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable",odsTable)
                 .mode(SaveMode.Append)
                 .save();
     }
