@@ -45,7 +45,7 @@ public class LoadMnchMatVisits {
                 .option("user", rtConfig.get("spark.mnchcentral.user"))
                 .option("password", rtConfig.get("spark.mnchcentral.password"))
                 .option("query", sourceQuery)
-                .option("numpartitions", rtConfig.get("spark.dwapicentral.numpartitions"))
+                .option("numpartitions", rtConfig.get("spark.mnchcentral.numpartitions"))
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
