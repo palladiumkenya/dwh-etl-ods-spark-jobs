@@ -15,9 +15,9 @@ SELECT 	DISTINCT a.[FacilityName]
 							  ,[ReportedCCCNumber]
 							  ,CASE WHEN CAST([ReportedStartARTDate] AS DATE) = '0001-01-01' THEN NULL ELSE CAST([ReportedStartARTDate] AS DATE) END AS [ReportedStartARTDate]
 
-						FROM [HTSCentral].[dbo].[ClientLinkages](NoLock) a
+						FROM [HTSCentral].[dbo].[ClientLinkages](NoLock) a--
 						INNER JOIN (
-								SELECT SiteCode,PatientPK, MAX(DateExtracted) AS MaxDateExtracted
+								SELECT distinct SiteCode,PatientPK, MAX(DateExtracted) AS MaxDateExtracted
 								FROM  [HTSCentral].[dbo].[ClientLinkages](NoLock)
 								GROUP BY SiteCode,PatientPK
 							) tm

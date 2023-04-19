@@ -8,9 +8,10 @@ SELECT  DISTINCT [HtsNumber]
         ,CAST ([Dob] AS DATE) AS [Dob]
         ,LEFT([Gender],1) AS Gender
         ,[MaritalStatus]
-        ,[KeyPopulationType]
-        ,[PatientDisabled] AS [DisabilityType]
-        ,PatientDisabled
+        ,coalesce([KeyPopulationType],'',null) AS [KeyPopulationType]
+        ,coalesce([PatientDisabled],'',null) AS [DisabilityType]
+    -- ,PatientDisabled
+        ,coalesce([PatientDisabled],'',null) as PatientDisabled
         ,[County]
         ,[SubCounty]
         ,[Ward]

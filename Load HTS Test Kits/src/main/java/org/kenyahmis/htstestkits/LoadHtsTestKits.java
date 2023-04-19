@@ -78,7 +78,7 @@ public class LoadHtsTestKits {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
-        newRecordsJoinDf = session.sql("select ID,FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,EncounterId," +
+        newRecordsJoinDf = session.sql("select FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,EncounterId," +
                 "TestKitName1,TestKitLotNumber1,TestKitExpiry1,TestResult1,TestKitName2,TestKitLotNumber2,TestKitExpiry2," +
                 "TestResult2,PatientPKHash,HtsNumberHash" +
                 " from new_records");

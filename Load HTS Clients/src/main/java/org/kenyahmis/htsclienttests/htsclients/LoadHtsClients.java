@@ -79,8 +79,8 @@ public class LoadHtsClients {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
-        newRecordsJoinDf = session.sql("select HtsNumber,Emr,Project,PatientPk,SiteCode,FacilityName,Serial," +
-                "Dob,Gender,MaritalStatus,KeyPopulationType,DisabilityType,PatientDisabled,County," +
+        newRecordsJoinDf = session.sql("select HtsNumber,Emr,Project,PatientPk,SiteCode,FacilityName," +
+                "Dob,Gender,MaritalStatus,KeyPopulationType,NULL,PatientDisabled,County," +
                 "PatientPKHash,NupiHash,SubCounty,Ward,NUPI,HtsRecencyId,Occupation ,PriorityPopulationType" +
                 " from new_records");
 

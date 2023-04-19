@@ -1,4 +1,4 @@
-SELECT DISTINCT a.ID,a.[FacilityName]
+SELECT DISTINCT a.[FacilityName]
               ,a.[SiteCode]
               ,a.[PatientPk]
               ,a.[HtsNumber]
