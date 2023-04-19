@@ -17,5 +17,12 @@ on a.sitecode = tn.sitecode and a.patientPK = tn.patientPK
     and a.encounterID = tn.encounterID
     and a.visitID = tn.visitID
 
+    Inner join ( select ct1.sitecode,ct1.patientPK,ct1.encounterID,ct1.visitID,max(ct1.DateExtracted)MaxDateExtracted  from [HTSCentral].[dbo].[HtsEligibilityExtract] ct1
+    group by ct1.sitecode,ct1.patientPK,ct1.encounterID,ct1.visitID)tn1
+    on a.sitecode = tn1.sitecode and a.patientPK = tn1.patientPK
+    and a.DateExtracted = tn1.MaxDateExtracted
+    and a.encounterID = tn1.encounterID
+    and a.visitID = tn1.visitID
+
     INNER JOIN [HTSCentral].[dbo].Clients (NoLock) Cl
     on a.PatientPk = Cl.PatientPk and a.SiteCode = Cl.SiteCode

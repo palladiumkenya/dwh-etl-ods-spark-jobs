@@ -1,4 +1,6 @@
-truncate table ODS.dbo.HistoricalARTOutcomesBaseTable;
+IF OBJECT_ID(N'[ODS].[dbo].[HistoricalARTOutcomesBaseTable]', N'U') IS NOT NULL
+TRUNCATE TABLE [ODS].[dbo].[HistoricalARTOutcomesBaseTable];
+
 declare
 @start_date date = '2017-01-31',
 @end_date date = '2022-09-30';
@@ -15,9 +17,6 @@ select
 into #months
 from dates
     option (maxrecursion 0);
-
-
-
 
 --declare as of date
 declare @as_of_date as date;
@@ -231,10 +230,13 @@ with clinical_visits_as_of_date as (
              and patient_art_and_enrollment_info.PatientPK = last_encounter.PatientPK
              and patient_art_and_enrollment_info.SiteCode = last_encounter.SiteCode
      )
-insert into dbo.HistoricalARTOutcomesBaseTable
+
+insert into ODS.dbo.HistoricalARTOutcomesBaseTable
 select
     ARTOutcomesCompuation.PatientID as PatientID,
-    ARTOutcomesCompuation.PatientPK,
+    ARTOutcomesCompuation.PatientPK as PatientPK,
+    convert(nvarchar(64), hashbytes('SHA2_256', cast(ARTOutcomesCompuation.PatientID as varchar )), 2) AS PatientIDHash,
+    convert(nvarchar(64), hashbytes('SHA2_256', cast(ARTOutcomesCompuation.PatientPK as varchar )), 2) AS PatientPKHash,
     ARTOutcomesCompuation.SiteCode as MFLCode,
     ARTOutcomesCompuation.ARTOutcome,
     ARTOutcomesCompuation.AsOfDate
@@ -242,7 +244,6 @@ from ARTOutcomesCompuation
 
     fetch next from cursor_AsOfDates into @as_of_date
 end
-
 
 --free up objects
 drop table #months

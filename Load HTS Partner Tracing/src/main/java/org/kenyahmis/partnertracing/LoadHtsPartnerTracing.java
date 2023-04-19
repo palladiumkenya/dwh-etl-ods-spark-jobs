@@ -79,7 +79,7 @@ public class LoadHtsPartnerTracing {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
-        newRecordsJoinDf = session.sql("select ID,FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TraceType," +
+        newRecordsJoinDf = session.sql("select FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TraceType," +
                 "TraceDate,TraceOutcome,BookingDate,PatientPKHash,HtsNumberHash" +
                 " from new_records");
 
