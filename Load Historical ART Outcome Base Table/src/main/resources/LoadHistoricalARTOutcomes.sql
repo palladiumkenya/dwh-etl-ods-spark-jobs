@@ -3,7 +3,7 @@ TRUNCATE TABLE [ODS].[dbo].[HistoricalARTOutcomesBaseTable];
 
 declare
 @start_date date = '2017-01-31',
-@end_date date = '2022-09-30';
+@end_date date = '2023-03-31';
 
 with dates as (
     select datefromparts(year(@start_date), month(@start_date), 1) as dte
