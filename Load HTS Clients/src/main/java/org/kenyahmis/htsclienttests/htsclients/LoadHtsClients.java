@@ -80,7 +80,7 @@ public class LoadHtsClients {
 
 
         newRecordsJoinDf = session.sql("select HtsNumber,Emr,Project,PatientPk,SiteCode,FacilityName," +
-                "Dob,Gender,MaritalStatus,KeyPopulationType,NULL,PatientDisabled,County," +
+                "Dob,Gender,MaritalStatus,KeyPopulationType,PatientDisabled,County," +
                 "PatientPKHash,NupiHash,SubCounty,Ward,NUPI,HtsRecencyId,Occupation ,PriorityPopulationType" +
                 " from new_records");
 
