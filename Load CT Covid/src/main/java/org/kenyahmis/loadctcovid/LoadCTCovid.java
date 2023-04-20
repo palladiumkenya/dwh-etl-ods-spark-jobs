@@ -82,7 +82,7 @@ public class LoadCTCovid {
         targetDataFrame.persist(StorageLevel.DISK_ONLY());
 
         sourceDataFrame.createOrReplaceTempView("source_covid");
-        sourceDataFrame.createOrReplaceTempView("target_covid");
+        targetDataFrame.createOrReplaceTempView("target_covid");
 
         // Get new records
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_covid s LEFT ANTI JOIN target_covid t ON s.SiteCode <=> t.SiteCode AND" +
