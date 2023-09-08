@@ -7,11 +7,9 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-
 import static org.apache.spark.sql.functions.*;
 import static org.apache.spark.sql.functions.col;
 
@@ -58,7 +56,7 @@ public class LoadPrepLab {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.PrEP_Lab")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -77,11 +75,12 @@ public class LoadPrepLab {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        newRecordsJoinDf = session.sql("select RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId," +
-                "Status,StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber,\n" +
-                "VisitID,TestName,TestResult,SampleDate,TestResultDate,Reason,Date_Created,Date_Last_Modified," +
-                "PatientPKHash,PrepNumberHash" +
-                " from new_records");
+        final String columnList = "RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status," +
+                "StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber," +
+                "VisitID,TestName,TestResult,SampleDate,TestResultDate,Reason," +
+                "Date_Created,Date_Last_Modified,PatientPKHash,PrepNumberHash";
+
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -91,7 +90,7 @@ public class LoadPrepLab {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.PrEP_Lab")
                 .mode(SaveMode.Append)
                 .save();
     }

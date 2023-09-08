@@ -5,12 +5,16 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
+import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Properties;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -24,8 +28,6 @@ public class LoadCTOVC {
                 .config(conf)
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
-
-//        final int targetPartitions = 10;
 
         final String queryFileName = "LoadCTOVC.sql";
         String query;
@@ -44,12 +46,12 @@ public class LoadCTOVC {
         logger.info("Loading source ct ovc data frame");
         Dataset<Row> sourceDataFrame = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.source.url"))
-                .option("driver", rtConfig.get("spark.source.driver"))
-                .option("user", rtConfig.get("spark.source.user"))
-                .option("password", rtConfig.get("spark.source.password"))
+                .option("url", rtConfig.get("spark.dwapicentral.url"))
+                .option("driver", rtConfig.get("spark.dwapicentral.driver"))
+                .option("user", rtConfig.get("spark.dwapicentral.user"))
+                .option("password", rtConfig.get("spark.dwapicentral.password"))
                 .option("query", query)
-                .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
+                .option("numpartitions", rtConfig.get("spark.dwapicentral.numpartitions"))
                 .load();
 
         sourceDataFrame.persist(StorageLevel.DISK_ONLY());
@@ -58,44 +60,63 @@ public class LoadCTOVC {
         logger.info("Loading target ct ovc data frame");
         Dataset<Row> targetDataFrame = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
-                .option("numpartitions", rtConfig.get("spark.sink.numpartitions"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+                .option("dbtable", "dbo.CT_Ovc")
+                .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
                 .load();
         targetDataFrame.persist(StorageLevel.MEMORY_ONLY());
 
         sourceDataFrame.createOrReplaceTempView("source_ovc");
         targetDataFrame.createOrReplaceTempView("target_ovc");
 
+        Properties connectionProperties = new Properties();
+        connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
+        connectionProperties.setProperty("user", rtConfig.get("spark.ods.user"));
+        connectionProperties.setProperty("pass", rtConfig.get("spark.ods.password"));
+        DatabaseUtils dbUtils = new DatabaseUtils(connectionProperties);
+
         // Get new records
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_ovc s LEFT ANTI JOIN target_ovc t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK AND s.VisitID <=> t.VisitID");
 
         // Hash PII columns
-        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
-                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
+//        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+//                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
 
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        newRecordsJoinDf = session.sql("select PatientID, PatientPK, SiteCode, FacilityName, VisitID, VisitDate," +
-                " Emr, Project, OVCEnrollmentDate, RelationshipToClient, EnrolledinCPIMS, CPIMSUniqueIdentifier," +
-                " PartnerOfferingOVCServices, OVCExitReason, ExitDate,PatientPKHash,PatientIDHash from new_records");
+        final String sourceColumnList = "ID,PatientID,PatientPK,SiteCode,FacilityName,VisitID,VisitDate,Emr,Project," +
+                "OVCEnrollmentDate,RelationshipToClient,EnrolledinCPIMS,CPIMSUniqueIdentifier,PartnerOfferingOVCServices," +
+                "OVCExitReason,ExitDate,Date_Created,Date_Last_Modified";
+        newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records",sourceColumnList));
 
         newRecordsJoinDf
-                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
+                .repartition(50)
                 .write()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+                .option("dbtable", "dbo.CT_Ovc")
                 .mode(SaveMode.Append)
                 .save();
+
+        // Hash PII
+        HashMap<String, String> hashColumns = new HashMap<>();
+        hashColumns.put("PatientID", "PatientIDHash");
+        hashColumns.put("PatientPK", "PatientPKHash");
+
+        try {
+            dbUtils.hashPIIColumns("dbo.CT_Ovc", hashColumns);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new RuntimeException();
+        }
     }
 }

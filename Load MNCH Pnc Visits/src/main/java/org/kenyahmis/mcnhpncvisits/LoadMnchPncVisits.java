@@ -7,7 +7,6 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -20,6 +19,7 @@ public class LoadMnchPncVisits {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load MNCH Pnc Visits");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
@@ -56,7 +56,7 @@ public class LoadMnchPncVisits {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_PncVisits")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -75,18 +75,18 @@ public class LoadMnchPncVisits {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        newRecordsJoinDf = session.sql("select PatientMnchID,PatientPk,PNCRegisterNumber,SiteCode,EMR,FacilityName," +
-                "Project,DateExtracted,VisitID,VisitDate,PNCVisitNo,DeliveryDate,ModeOfDelivery,PlaceOfDelivery," +
-                "Height,Weight,Temp,PulseRate,RespiratoryRate,OxygenSaturation,MUAC,BP,BreastExam,GeneralCondition," +
-                "HasPallor,Pallor,Breast,PPH,CSScar,UterusInvolution,Episiotomy,Lochia,Fistula,MaternalComplications," +
-                "TBScreening,ClientScreenedCACx,CACxScreenMethod,CACxScreenResults,PriorHIVStatus,HIVTestingDone,HIVTest1," +
+        final String columnList = "PatientMnchID,PatientPk,PNCRegisterNumber,SiteCode,EMR,FacilityName,Project," +
+                "DateExtracted,VisitID,VisitDate,PNCVisitNo,DeliveryDate,ModeOfDelivery,PlaceOfDelivery,Height,Weight," +
+                "Temp,PulseRate,RespiratoryRate,OxygenSaturation,MUAC,BP,BreastExam,GeneralCondition,HasPallor,Pallor," +
+                "Breast,PPH,CSScar,UterusInvolution,Episiotomy,Lochia,Fistula,MaternalComplications,TBScreening," +
+                "ClientScreenedCACx,CACxScreenMethod,CACxScreenResults,PriorHIVStatus,HIVTestingDone,HIVTest1," +
                 "HIVTest1Result,HIVTest2,HIVTest2Result,HIVTestFinalResult,InfantProphylaxisGiven,MotherProphylaxisGiven," +
                 "CoupleCounselled,PartnerHIVTestingPNC,PartnerHIVResultPNC,CounselledOnFP,ReceivedFP,HaematinicsGiven," +
                 "DeliveryOutcome,BabyConditon,BabyFeeding,UmbilicalCord,Immunization,InfantFeeding,PreventiveServices," +
-                "ReferredFrom,ReferredTo,NextAppointmentPNC,ClinicalNotes,Date_Last_Modified," +
-                "PatientPKHash,PatientMnchIDHash" +
-                " from new_records");
+                "ReferredFrom,ReferredTo,NextAppointmentPNC,ClinicalNotes,Date_Last_Modified,InfactCameForHAART," +
+                "MotherCameForHIVTest,MotherGivenHAART,VisitTimingBaby,VisitTimingMother,PatientPKHash,PatientMnchIDHash";
+
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -96,7 +96,7 @@ public class LoadMnchPncVisits {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_PncVisits")
                 .mode(SaveMode.Append)
                 .save();
     }

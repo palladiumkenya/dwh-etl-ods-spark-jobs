@@ -7,7 +7,6 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -21,6 +20,7 @@ public class LoadPrepCareTermination {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load PrEP Care Termination");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
@@ -57,7 +57,7 @@ public class LoadPrepCareTermination {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.PrEP_CareTermination")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -76,11 +76,10 @@ public class LoadPrepCareTermination {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        newRecordsJoinDf = session.sql("select ID,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId," +
-                "Status,StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber,\n" +
-                "ExitDate,ExitReason,DateOfLastPrepDose,Date_Created,Date_Last_Modified," +
-                "PatientPKHash,PrepNumberHash" +
-                " from new_records");
+        final String columnList = "ID,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status," +
+                "StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber," +
+                "ExitDate,ExitReason,DateOfLastPrepDose,Date_Created,Date_Last_Modified,PatientPKHash,PrepNumberHash";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -90,7 +89,7 @@ public class LoadPrepCareTermination {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.PrEP_CareTermination")
                 .mode(SaveMode.Append)
                 .save();
     }

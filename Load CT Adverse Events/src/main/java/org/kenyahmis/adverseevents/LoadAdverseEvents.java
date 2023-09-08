@@ -5,6 +5,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
+import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,7 +13,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.sql.Date;
+import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Properties;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -20,7 +24,6 @@ public class LoadAdverseEvents {
     private static final Logger logger = LoggerFactory.getLogger(LoadAdverseEvents.class);
 
     public static void main(String[] args) {
-
         SparkConf conf = new SparkConf();
         conf.setAppName("Load Adverse Events");
         SparkSession session = SparkSession.builder()
@@ -45,31 +48,33 @@ public class LoadAdverseEvents {
         logger.info("Loading source Adverse Events");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.source.url"))
-                .option("driver", rtConfig.get("spark.source.driver"))
-                .option("user", rtConfig.get("spark.source.user"))
-                .option("password", rtConfig.get("spark.source.password"))
+                .option("url", rtConfig.get("spark.dwapicentral.url"))
+                .option("driver", rtConfig.get("spark.dwapicentral.driver"))
+                .option("user", rtConfig.get("spark.dwapicentral.user"))
+                .option("password", rtConfig.get("spark.dwapicentral.password"))
                 .option("dbtable", "(" + sourceQuery + ") pv")
-                .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
+                .option("numpartitions", rtConfig.get("spark.dwapicentral.numpartitions"))
                 .load();
 
         // load lookup tables
         Dataset<Row> lookupRegimenDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.lookup.regimen"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.lkp_regimen")
+                .option("query", "select source_name, target_name from dbo.lkp_regimen")
                 .load();
 
         Dataset<Row> lookupAdverseEventsDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.lookup.adverse"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.lkp_adverse_events")
+                .option("query", "select source_name, target_name from dbo.lkp_adverse_events")
                 .load();
 
         sourceDf = sourceDf
@@ -120,45 +125,60 @@ public class LoadAdverseEvents {
         logger.info("Loading target Adverse Events");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+                .option("dbtable", "dbo.CT_AdverseEvents")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
         sourceDf.createOrReplaceTempView("source_events");
         targetDf.createOrReplaceTempView("target_events");
 
+        Properties connectionProperties = new Properties();
+        connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
+        connectionProperties.setProperty("user", rtConfig.get("spark.ods.user"));
+        connectionProperties.setProperty("pass", rtConfig.get("spark.ods.password"));
+        DatabaseUtils dbUtils = new DatabaseUtils(connectionProperties);
+
         // Get new records
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_events s LEFT ANTI JOIN target_events t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK and cast(s.VisitDate as date) <=> t.VisitDate");
 
-        // Hash PII columns
-        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
-                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
-
         long newAdverseEventsCount = newRecordsJoinDf.count();
         logger.info("New adverse events count is: " + newAdverseEventsCount);
 
+        final String sourceColumnList = "PatientID,Patientpk,SiteCode,AdverseEvent,AdverseEventStartDate," +
+                "AdverseEventEndDate,Severity,VisitDate,EMR,Project,AdverseEventCause,AdverseEventRegimen," +
+                "AdverseEventActionTaken,AdverseEventClinicalOutcome,AdverseEventIsPregnant,Date_Created,Date_Last_Modified";
+
         newRecordsJoinDf.createOrReplaceTempView("new_records");
-        newRecordsJoinDf = session.sql("SELECT PatientID,Patientpk, SiteCode,AdverseEvent,AdverseEventStartDate," +
-                "AdverseEventEndDate,Severity,VisitDate,EMR,Project,AdverseEventCause,AdverseEventRegimen,AdverseEventActionTaken," +
-                "AdverseEventClinicalOutcome,AdverseEventIsPregnant,PatientPKHash,PatientIDHash" +
-                " FROM new_records");
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", sourceColumnList));
 
         // Write to target table
         newRecordsJoinDf
-                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
+                .repartition(50)
                 .write()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+                .option("dbtable", "dbo.CT_AdverseEvents")
                 .mode(SaveMode.Append)
                 .save();
+
+        // Hash PII
+        HashMap<String, String> hashColumns = new HashMap<>();
+        hashColumns.put("PatientID", "PatientIDHash");
+        hashColumns.put("PatientPK", "PatientPKHash");
+
+        try {
+            dbUtils.hashPIIColumns("CT_AdverseEvents", hashColumns);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new RuntimeException();
+        }
     }
 }

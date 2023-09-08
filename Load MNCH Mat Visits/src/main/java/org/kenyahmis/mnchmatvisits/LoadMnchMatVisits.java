@@ -57,7 +57,7 @@ public class LoadMnchMatVisits {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_MatVisits")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -76,19 +76,18 @@ public class LoadMnchMatVisits {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
+        final String columnList = "PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status,StatusDate,DateExtracted," +
+                "FacilityId,PatientMnchID,FacilityName,VisitID,VisitDate,AdmissionNumber,ANCVisits,DateOfDelivery," +
+                "DurationOfDelivery,GestationAtBirth,ModeOfDelivery,PlacentaComplete,UterotonicGiven,VaginalExamination," +
+                "BloodLoss,BloodLossVisual,ConditonAfterDelivery,MaternalDeath,DeliveryComplications,NoBabiesDelivered," +
+                "BabyBirthNumber,SexBaby,BirthWeight,BirthOutcome,BirthWithDeformity,TetracyclineGiven,InitiatedBF," +
+                "ApgarScore1,ApgarScore5,ApgarScore10,KangarooCare,ChlorhexidineApplied,VitaminKGiven,StatusBabyDischarge," +
+                "MotherDischargeDate,SyphilisTestResults,HIVStatusLastANC,HIVTestingDone,HIVTest1,HIV1Results,HIVTest2," +
+                "HIV2Results,HIVTestFinalResult,OnARTANC,BabyGivenProphylaxis,MotherGivenCTX,PartnerHIVTestingMAT," +
+                "PartnerHIVStatusMAT,CounselledOn,ReferredFrom,ReferredTo,ClinicalNotes,EDD,LMP," +
+                "MaternalDeathAudited,OnARTMat,ReferralReason,PatientPKHash,PatientMnchIDHash";
 
-        newRecordsJoinDf = session.sql("select PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status,StatusDate," +
-                "DateExtracted,FacilityId,PatientMnchID,FacilityName,VisitID,VisitDate,AdmissionNumber,ANCVisits," +
-                "DateOfDelivery,DurationOfDelivery,GestationAtBirth,ModeOfDelivery,PlacentaComplete,UterotonicGiven," +
-                "VaginalExamination,BloodLoss,BloodLossVisual,ConditonAfterDelivery,MaternalDeath,DeliveryComplications," +
-                "NoBabiesDelivered,BabyBirthNumber,SexBaby,BirthWeight,BirthOutcome,BirthWithDeformity,TetracyclineGiven," +
-                "InitiatedBF,ApgarScore1,ApgarScore5,ApgarScore10,KangarooCare,ChlorhexidineApplied,VitaminKGiven," +
-                "StatusBabyDischarge,MotherDischargeDate,SyphilisTestResults,HIVStatusLastANC,HIVTestingDone,HIVTest1," +
-                "HIV1Results,HIVTest2,HIV2Results,HIVTestFinalResult,OnARTANC,BabyGivenProphylaxis,MotherGivenCTX," +
-                "PartnerHIVTestingMAT,PartnerHIVStatusMAT,CounselledOn,ReferredFrom,ReferredTo,ClinicalNotes," +
-                "PatientPKHash,PatientMnchIDHash" +
-                " from new_records");
-
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
                 .write()
@@ -97,7 +96,7 @@ public class LoadMnchMatVisits {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_MatVisits")
                 .mode(SaveMode.Append)
                 .save();
     }

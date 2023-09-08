@@ -7,9 +7,12 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.Date;
+import java.time.LocalDate;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -20,6 +23,7 @@ public class LoadHtsClients {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load HTS Clients");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
@@ -50,6 +54,48 @@ public class LoadHtsClients {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        Dataset<Row> maritalStatusLookupDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.lkp_MaritalStatus")
+                .option("query", "select Source_MaritalStatus,Target_MaritalStatus from dbo.lkp_MaritalStatus")
+                .load();
+
+        Dataset<Row> htsDisabilityLookupDf = session.read()
+                .format("jdbc")
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.lkp_htsDisability")
+                .option("query", "select Source_Disability,Target_Disability from dbo.lkp_htsDisability")
+                .load();
+
+        //Clean source data
+        sourceDf = sourceDf
+                .withColumn("Dob", when(col("Dob").lt(lit(Date.valueOf(LocalDate.of(1910, 1, 1))))
+                        .or(col("Dob").gt(lit(Date.valueOf(LocalDate.now())))), null)
+                        .otherwise(col("Dob")))
+                .withColumn("Gender", when(col("Gender").equalTo("M"), "Male")
+                        .when(col("Gender").equalTo("F"), "Female")
+                        .otherwise(col("Gender")))
+                .withColumn("PatientDisabled", when(col("PatientDisabled").equalTo("No"), "No")
+                        .when(col("PatientDisabled").isNotNull().and(col("PatientDisabled").notEqual("No")), "Yes")
+                        .otherwise(null));
+
+        //Set values from look up tables
+        sourceDf = sourceDf
+                .join(htsDisabilityLookupDf, htsDisabilityLookupDf.col("Source_Disability").equalTo(sourceDf.col("DisabilityType")), "left")
+                .join(maritalStatusLookupDf, maritalStatusLookupDf.col("Source_MaritalStatus").equalTo(sourceDf.col("MaritalStatus")), "left")
+                .withColumn("MaritalStatus",
+                        when(maritalStatusLookupDf.col("Target_MaritalStatus").isNotNull(), maritalStatusLookupDf.col("Target_MaritalStatus"))
+                                .otherwise(col("MaritalStatus")))
+                .withColumn("DisabilityType",
+                        when(htsDisabilityLookupDf.col("Target_Disability").isNotNull(), htsDisabilityLookupDf.col("Target_Disability"))
+                                .otherwise(col("DisabilityType")));
 
         logger.info("Loading target hts clients");
         Dataset<Row> targetDf = session.read()
@@ -59,7 +105,7 @@ public class LoadHtsClients {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_clients")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -78,11 +124,10 @@ public class LoadHtsClients {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        newRecordsJoinDf = session.sql("select HtsNumber,Emr,Project,PatientPk,SiteCode,FacilityName," +
-                "Dob,Gender,MaritalStatus,KeyPopulationType,PatientDisabled,County," +
-                "PatientPKHash,NupiHash,SubCounty,Ward,NUPI,HtsRecencyId,Occupation ,PriorityPopulationType" +
-                " from new_records");
+        String columnList = "HtsNumber,Emr,Project,PatientPk,SiteCode,FacilityName,Dob,Gender,MaritalStatus," +
+                "KeyPopulationType,DisabilityType,PatientDisabled,County,SubCounty,Ward,NUPI," +
+                "HtsRecencyId,Occupation,PriorityPopulationType,pkv";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -92,7 +137,7 @@ public class LoadHtsClients {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_clients")
                 .mode(SaveMode.Append)
                 .save();
     }

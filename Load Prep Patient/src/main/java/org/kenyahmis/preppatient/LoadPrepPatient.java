@@ -21,6 +21,7 @@ public class LoadPrepPatient {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load PrEP Patient");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
@@ -57,7 +58,7 @@ public class LoadPrepPatient {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.PrEP_Patient")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -76,15 +77,13 @@ public class LoadPrepPatient {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        newRecordsJoinDf = session.sql("select ID,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId," +
-                "Status,StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber,PrepEnrollmentDate,Sex," +
-                "DateofBirth,CountyofBirth,County,SubCounty,Location,LandMark,Ward,ClientType,ReferralPoint," +
+        final String columnList = "ID,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,[Status]," +
+                "StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber,PrepEnrollmentDate,Sex," +
+                "DateofBirth,CountyofBirth,County,SubCounty,[Location],LandMark,Ward,ClientType,ReferralPoint," +
                 "MaritalStatus,Inschool,PopulationType,KeyPopulationType,Refferedfrom,TransferIn,TransferInDate," +
                 "TransferFromFacility,DatefirstinitiatedinPrepCare,DateStartedPrEPattransferringfacility," +
-                "ClientPreviouslyonPrep,PrevPrepReg,DateLastUsedPrev,Date_Created" +
-                ",Date_Last_Modified," +
-                "PatientPKHash,PrepNumberHash" +
-                " from new_records");
+                "ClientPreviouslyonPrep,PrevPrepReg,DateLastUsedPrev,Date_Created,Date_Last_Modified,PatientPKHash,PrepNumberHash";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -94,7 +93,7 @@ public class LoadPrepPatient {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.PrEP_Patient")
                 .mode(SaveMode.Append)
                 .save();
     }

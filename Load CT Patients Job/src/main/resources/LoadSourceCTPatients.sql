@@ -1,8 +1,8 @@
 SELECT  DISTINCT P.ID,P.[PatientCccNumber] as PatientID,P.[PatientPID] as PatientPK,F.Code as SiteCode,F.[Name] as FacilityName,Gender,DOB,RegistrationDate,RegistrationAtCCC
                ,RegistrationAtPMTCT,RegistrationAtTBClinic,PatientSource,Region,District,Village
-               ,ContactRelation,LastVisit,MaritalStatus,EducationLevel,DateConfirmedHIVPositive,PreviousARTExposure,PreviousARTStartDate,P.Emr,P.Project,PKV,Orphan,Inschool,PatientType,PopulationType,KeyPopulationType,PatientResidentCounty,
+               ,ContactRelation,LastVisit,MaritalStatus,EducationLevel,DateConfirmedHIVPositive,PreviousARTExposure,PreviousARTStartDate,P.Emr,P.Project,Orphan,Inschool,PatientType,PopulationType,KeyPopulationType,PatientResidentCounty,
     PatientResidentSubCounty,PatientResidentLocation,PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation,NUPI
-
+               ,Pkv,P.[Date_Created],P.[Date_Last_Modified]
 FROM [DWAPICentral].[dbo].[PatientExtract]  P  with (NoLock)
     INNER JOIN [DWAPICentral].[dbo].[Facility] F with (NoLock)
 ON P.[FacilityId]  = F.Id  AND F.Voided=0

@@ -56,6 +56,7 @@
         <module>Load Prep Patient</module>
         <module>Load Prep Pharmacy</module>
         <module>Load Prep Visits</module>
+        <module>Core</module>
     </modules>
 
     <dependencyManagement>

@@ -19,6 +19,7 @@ SELECT  DISTINCT [HtsNumber]
         ,HtsRecencyId
         ,Occupation
         ,PriorityPopulationType
+        ,pkv
 FROM [HTSCentral].[dbo].[Clients](NoLock) a
     INNER JOIN (
     SELECT SiteCode,PatientPK, MAX(datecreated) AS Maxdatecreated

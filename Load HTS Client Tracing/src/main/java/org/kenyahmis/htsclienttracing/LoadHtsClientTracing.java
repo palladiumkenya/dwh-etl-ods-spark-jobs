@@ -59,7 +59,7 @@ public class LoadHtsClientTracing {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_ClientTracing")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -79,10 +79,8 @@ public class LoadHtsClientTracing {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        newRecordsJoinDf = session.sql("select FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TracingType," +
-                "TracingDate,TracingOutcome,PatientPKHash,HtsNumberHash" +
-                " from new_records");
+        String columnList = "FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TracingType,TracingDate,TracingOutcome";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -92,7 +90,7 @@ public class LoadHtsClientTracing {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_ClientTracing")
                 .mode(SaveMode.Append)
                 .save();
     }

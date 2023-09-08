@@ -57,7 +57,7 @@ public class LoadMnchMotherBabyPairs {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_MotherBabyPairs")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -77,10 +77,10 @@ public class LoadMnchMotherBabyPairs {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
-        newRecordsJoinDf = session.sql("select PatientIDCCC,PatientPk,BabyPatientPK,MotherPatientPK,BabyPatientMncHeiID," +
-                "MotherPatientMncHeiID,SiteCode,FacilityName,EMR,Project,DateExtracted,Date_Created,Date_Last_Modified," +
-                "PatientPKHash,BabyPatientPKHash,MotherPatientPKHash,MotherPatientMncHeiIDHash" +
-                " from new_records");
+        final String columnList = "PatientIDCCC,PatientPk,BabyPatientPK,MotherPatientPK,BabyPatientMncHeiID," +
+                "MotherPatientMncHeiID,SiteCode,FacilityName,EMR,Project,Date_Last_Modified ,PatientPKHash," +
+                "BabyPatientPKHash,MotherPatientPKHash,MotherPatientMncHeiIDHash";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -90,7 +90,7 @@ public class LoadMnchMotherBabyPairs {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_MotherBabyPairs")
                 .mode(SaveMode.Append)
                 .save();
     }

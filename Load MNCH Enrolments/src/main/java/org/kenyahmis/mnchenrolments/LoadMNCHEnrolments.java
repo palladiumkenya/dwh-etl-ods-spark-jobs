@@ -57,7 +57,7 @@ public class LoadMNCHEnrolments {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_Enrolments")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -76,12 +76,11 @@ public class LoadMNCHEnrolments {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
-        newRecordsJoinDf = session.sql("select PatientMnchID,PatientPk,SiteCode,FacilityName,EMR,Project," +
-                "DateExtracted,ServiceType,EnrollmentDateAtMnch,MnchNumber,FirstVisitAnc,Parity,Gravidae,LMP," +
-                "EDDFromLMP,HIVStatusBeforeANC,HIVTestDate,PartnerHIVStatus,PartnerHIVTestDate,BloodGroup,StatusAtMnch," +
-                "Date_Last_Modified," +
-                "PatientPKHash,PatientMnchIDHash" +
-                " from new_records");
+        final String columnList = "PatientMnchID,PatientPk,SiteCode,FacilityName,EMR,Project,DateExtracted,ServiceType," +
+                "EnrollmentDateAtMnch,MnchNumber,FirstVisitAnc,Parity,Gravidae,LMP,EDDFromLMP,HIVStatusBeforeANC," +
+                "HIVTestDate,PartnerHIVStatus,PartnerHIVTestDate,BloodGroup,StatusAtMnch," +
+                "Date_Last_Modified,PatientPKHash,PatientMnchIDHash";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -91,7 +90,7 @@ public class LoadMNCHEnrolments {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_Enrolments")
                 .mode(SaveMode.Append)
                 .save();
     }

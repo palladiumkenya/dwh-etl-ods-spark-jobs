@@ -57,7 +57,7 @@ public class LoadMNCHHeis {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_HEIs")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -75,13 +75,11 @@ public class LoadMNCHHeis {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        newRecordsJoinDf = session.sql("select PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status,StatusDate," +
-                "DateExtracted,FacilityId,FacilityName,PatientMnchID,DNAPCR1Date,DNAPCR2Date,DNAPCR3Date,ConfirmatoryPCRDate," +
-                "BasellineVLDate,FinalyAntibodyDate,DNAPCR1,DNAPCR2,DNAPCR3,ConfirmatoryPCR,BasellineVL,FinalyAntibody," +
-                "HEIExitDate,HEIHIVStatus,HEIExitCritearia,Date_Created,Date_Last_Modified," +
-                "PatientPKHash,PatientMnchIDHash" +
-                " from new_records");
+        final String columnList = "PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status,StatusDate,FacilityId," +
+                "FacilityName,PatientMnchID,DNAPCR1Date,DNAPCR2Date,DNAPCR3Date,ConfirmatoryPCRDate,BasellineVLDate," +
+                "FinalyAntibodyDate,DNAPCR1,DNAPCR2,DNAPCR3,ConfirmatoryPCR,BasellineVL,FinalyAntibody,HEIExitDate," +
+                "HEIHIVStatus,HEIExitCritearia,Date_Created,Date_Last_Modified,PatientPKHash,PatientMnchIDHash";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -91,7 +89,7 @@ public class LoadMNCHHeis {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_HEIs")
                 .mode(SaveMode.Append)
                 .save();
     }

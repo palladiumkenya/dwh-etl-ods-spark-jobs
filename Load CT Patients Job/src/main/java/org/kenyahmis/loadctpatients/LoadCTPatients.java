@@ -5,14 +5,18 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
+import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.sql.Date;
+import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Properties;
+
 import static org.apache.spark.sql.functions.*;
 import static org.apache.spark.sql.functions.col;
 
@@ -44,12 +48,12 @@ public class LoadCTPatients {
         logger.info("Loading source CT patients");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.source.url"))
-                .option("driver", rtConfig.get("spark.source.driver"))
-                .option("user", rtConfig.get("spark.source.user"))
-                .option("password", rtConfig.get("spark.source.password"))
+                .option("url", rtConfig.get("spark.dwapicentral.url"))
+                .option("driver", rtConfig.get("spark.dwapicentral.driver"))
+                .option("user", rtConfig.get("spark.dwapicentral.user"))
+                .option("password", rtConfig.get("spark.dwapicentral.password"))
                 .option("dbtable", "(" + sourceVisitsQuery + ") pv")
-                .option("numpartitions", rtConfig.get("spark.source.numpartitions"))
+                .option("numpartitions", rtConfig.get("spark.dwapicentral.numpartitions"))
                 .load();
 
         sourceDf.persist(StorageLevel.DISK_ONLY());
@@ -57,48 +61,52 @@ public class LoadCTPatients {
         // load lookup tables
         Dataset<Row> maritalStatusLookupDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.lookup.maritalStatus"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.lkp_MaritalStatus")
+                .option("query", "select Source_MaritalStatus, Target_MaritalStatus from dbo.lkp_MaritalStatus")
                 .load();
 
         Dataset<Row> educationLevelLookupDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.lookup.educationLevel"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.Lkp_EducationLevel")
+                .option("query", "select SourceEducationLevel,TargetEducationLevel from dbo.Lkp_EducationLevel")
                 .load();
 
         Dataset<Row> regimenMapLookupDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.lookup.regimenMap"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.lkp_RegimenLineMap")
+                .option("query", "select Source_Regimen,Target_Regimen from dbo.lkp_RegimenLineMap")
                 .load();
 
         Dataset<Row> patientSourceLookupDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.lookup.patientSource"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.lkp_patient_source")
+                .option("query", "select source_name,target_name from dbo.lkp_patient_source")
                 .load();
 
-        Dataset<Row> partnerOfferingOVCLookupDf = session.read()
-                .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.lookup.partnerOfferingOvc"))
-                .load();
+//        Dataset<Row> partnerOfferingOVCLookupDf = session.read()
+//                .format("jdbc")
+//                .option("url", rtConfig.get("spark.ods.url"))
+//                .option("driver", rtConfig.get("spark.ods.driver"))
+//                .option("user", rtConfig.get("spark.ods.user"))
+//                .option("password", rtConfig.get("spark.ods.password"))
+//                .option("dbtable", "dbo.lkp_PartnerOfferingOVCServices")
+//                .load();
 
         sourceDf = sourceDf
                 .withColumn("DOB", when(col("DOB").lt(lit(Date.valueOf(LocalDate.of(1910, 1, 1))))
@@ -153,50 +161,70 @@ public class LoadCTPatients {
         logger.info("Loading target CT patients");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+                .option("dbtable", "dbo.CT_Patient")
                 .load();
         targetDf.persist(StorageLevel.DISK_ONLY());
 
         sourceDf.createOrReplaceTempView("source_patients");
         targetDf.createOrReplaceTempView("target_patients");
 
+        Properties connectionProperties = new Properties();
+        connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
+        connectionProperties.setProperty("user", rtConfig.get("spark.ods.user"));
+        connectionProperties.setProperty("pass", rtConfig.get("spark.ods.password"));
+        DatabaseUtils dbUtils = new DatabaseUtils(connectionProperties);
+
         // Get new records
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_patients s LEFT ANTI JOIN target_patients t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK");
 
         // Hash PII columns
-        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
-                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)))
-                .withColumn("NupiHash", upper(sha2(col("NUPI").cast(DataTypes.StringType), 256)));
+//        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+//                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)))
+//                .withColumn("NupiHash", upper(sha2(col("NUPI").cast(DataTypes.StringType), 256)));
 
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        newRecordsJoinDf = session.sql("SELECT Id,PatientID,PatientPK,SiteCode,FacilityName,Gender," +
-                "DOB,RegistrationDate,RegistrationAtCCC,RegistrationAtPMTCT,RegistrationAtTBClinic,PatientSource,Region," +
-                "District,Village,ContactRelation,LastVisit,MaritalStatus,EducationLevel,DateConfirmedHIVPositive," +
+        final String sourceColumnList = "ID,PatientID,PatientPK,SiteCode,FacilityName,Gender,DOB,RegistrationDate," +
+                "RegistrationAtCCC,RegistrationAtPMTCT,RegistrationAtTBClinic,PatientSource,Region,District," +
+                "Village,ContactRelation,LastVisit,MaritalStatus,EducationLevel,DateConfirmedHIVPositive," +
                 "PreviousARTExposure,PreviousARTStartDate,Emr,Project,Orphan,Inschool,PatientType,PopulationType," +
                 "KeyPopulationType,PatientResidentCounty,PatientResidentSubCounty,PatientResidentLocation," +
-                "PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation,NUPI," +
-                "PatientPKHash,PatientIDHash,NupiHash" +
-                " FROM new_records");
+                "PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation," +
+                "NUPI,Pkv,Date_Created,Date_Last_Modified";
+
+        newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
 
         // Write to target table
         newRecordsJoinDf
-                .repartition(Integer.parseInt(rtConfig.get("spark.source.numpartitions")))
+                .repartition(50)
                 .write()
                 .format("jdbc")
-                .option("url", rtConfig.get("spark.sink.url"))
-                .option("driver", rtConfig.get("spark.sink.driver"))
-                .option("user", rtConfig.get("spark.sink.user"))
-                .option("password", rtConfig.get("spark.sink.password"))
-                .option("dbtable", rtConfig.get("spark.sink.dbtable"))
+                .option("url", rtConfig.get("spark.ods.url"))
+                .option("driver", rtConfig.get("spark.ods.driver"))
+                .option("user", rtConfig.get("spark.ods.user"))
+                .option("password", rtConfig.get("spark.ods.password"))
+                .option("dbtable", "dbo.CT_Patient")
                 .mode(SaveMode.Append)
                 .save();
+
+        // Hash PII
+        HashMap<String, String> hashColumns = new HashMap<>();
+        hashColumns.put("PatientID", "PatientIDHash");
+        hashColumns.put("PatientPK", "PatientPKHash");
+        hashColumns.put("NUPI", "NupiHash");
+
+        try {
+            dbUtils.hashPIIColumns("dbo.CT_Patient", hashColumns);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new RuntimeException();
+        }
     }
 }

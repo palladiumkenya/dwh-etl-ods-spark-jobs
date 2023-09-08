@@ -1,4 +1,4 @@
-SELECT
+SELECT Distinct
     P.[PatientCccNumber] AS PatientID,P.[PatientPID] AS PatientPK,F.Code AS SiteCode,F.Name AS FacilityName,
     IE.[VisitId] AS VisitID,IE.[VisitDate] AS VisitDate,P.[Emr] AS Emr,
     CASE
@@ -13,10 +13,8 @@ SELECT
     IE.[TBClinicalDiagnosis] AS TBClinicalDiagnosis,IE.[ContactsInvited] AS ContactsInvited,
     IE.[EvaluatedForIPT] AS EvaluatedForIPT,IE.[StartAntiTBs] AS StartAntiTBs,IE.[TBRxStartDate] AS TBRxStartDate,
     IE.[TBScreening] AS TBScreening,IE.[IPTClientWorkUp] AS IPTClientWorkUp,IE.[StartIPT] AS StartIPT,
-    IE.[IndicationForIPT] AS IndicationForIPT,GETDATE() AS DateImported,
-    LTRIM(RTRIM(STR(F.Code))) + '-' + LTRIM(RTRIM(P.[PatientCccNumber])) + '-' + LTRIM(RTRIM(STR(P.[PatientPID]))) AS CKV
-        ,P.ID as PatientUnique_ID
-        ,IE.ID as IptVisitUnique_ID
+    IE.[IndicationForIPT] AS IndicationForIPT
+        ,P.ID,IE.[Date_Created],IE.[Date_Last_Modified]
 FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
     INNER JOIN [DWAPICentral].[dbo].[IptExtract](NoLock) IE ON IE.[PatientId] = P.ID AND IE.Voided = 0
     INNER JOIN [DWAPICentral].[dbo].[Facility](NoLock) F ON P.[FacilityId] = F.Id AND F.Voided = 0

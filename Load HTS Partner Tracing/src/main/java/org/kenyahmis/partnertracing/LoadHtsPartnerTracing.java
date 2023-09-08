@@ -7,7 +7,6 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -21,6 +20,7 @@ public class LoadHtsPartnerTracing {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load HTS Partner Tracing");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
@@ -49,6 +49,9 @@ public class LoadHtsPartnerTracing {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        //Clean source data
+        sourceDf = sourceDf.withColumn("TraceOutcome", when(col("TraceOutcome").isin("null", "NULL"), null)
+                .otherwise(col("TraceOutcome")));
 
         logger.info("Loading target hts partner tracing");
         Dataset<Row> targetDf = session.read()
@@ -58,7 +61,7 @@ public class LoadHtsPartnerTracing {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_PartnerTracings")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -79,9 +82,9 @@ public class LoadHtsPartnerTracing {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
-        newRecordsJoinDf = session.sql("select FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TraceType," +
-                "TraceDate,TraceOutcome,BookingDate,PatientPKHash,HtsNumberHash" +
-                " from new_records");
+        String columnList = "FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TraceType,TraceDate,TraceOutcome," +
+                "BookingDate";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -91,7 +94,7 @@ public class LoadHtsPartnerTracing {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_PartnerTracings")
                 .mode(SaveMode.Append)
                 .save();
     }

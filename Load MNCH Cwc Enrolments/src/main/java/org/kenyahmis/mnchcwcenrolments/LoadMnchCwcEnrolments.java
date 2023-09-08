@@ -57,7 +57,7 @@ public class LoadMnchCwcEnrolments {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_CwcEnrolments")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -78,13 +78,12 @@ public class LoadMnchCwcEnrolments {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
-        newRecordsJoinDf = session.sql("select PatientIDCWC,HEIID,PatientPk,SiteCode,EMR,FacilityName,Project," +
-                "DateExtracted,PKV,MothersPkv,RegistrationAtCWC,RegistrationAtHEI,VisitID,Gestation,BirthWeight," +
-                "BirthLength,BirthOrder,BirthType,PlaceOfDelivery,ModeOfDelivery,SpecialNeeds,SpecialCare,HEI," +
-                "MotherAlive,MothersCCCNo,TransferIn,TransferInDate,TransferredFrom,HEIDate,NVP,BreastFeeding," +
-                "ReferredFrom,ARTMother,ARTRegimenMother,ARTStartDateMother,Date_Created,Date_Last_Modified," +
-                "PatientPKHash,MothersPkvHash,MothersCCCNoHash" +
-                " from new_records");
+        final String columnList = "PatientIDCWC,HEIID,PatientPk,SiteCode,EMR,FacilityName,Project,DateExtracted,PKV," +
+                "MothersPkv,RegistrationAtCWC,RegistrationAtHEI,VisitID,Gestation,BirthWeight,BirthLength,BirthOrder," +
+                "BirthType,PlaceOfDelivery,ModeOfDelivery,SpecialNeeds,SpecialCare,HEI,MotherAlive,MothersCCCNo," +
+                "TransferIn,TransferInDate,TransferredFrom,HEIDate,NVP,BreastFeeding,ReferredFrom,ARTMother," +
+                "ARTRegimenMother,ARTStartDateMother,Date_Created,Date_Last_Modified,PatientPKHash,MothersPkvHash,MothersCCCNoHash";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -94,7 +93,7 @@ public class LoadMnchCwcEnrolments {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_CwcEnrolments")
                 .mode(SaveMode.Append)
                 .save();
     }

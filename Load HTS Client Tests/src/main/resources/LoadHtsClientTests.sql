@@ -31,6 +31,9 @@ SELECT distinct
               ,Approach
               ,HtsRiskCategory
               ,HtsRiskScore
+              ,[OtherReferredServices]
+              ,[ReferredForServices]
+              ,[ReferredServices]
 
 FROM [HTSCentral].[dbo].[HtsClientTests](NoLock) a
     LEFT JOIN ods.dbo.lkp_patient_source mm

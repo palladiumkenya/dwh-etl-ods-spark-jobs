@@ -13,10 +13,9 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 
 import static org.apache.spark.sql.functions.*;
-import static org.apache.spark.sql.functions.col;
 
 public class LoadHtsTestKits {
-    private static final Logger logger = LoggerFactory.getLogger(LoadHtsTestKits.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoadHtsTestKits.class);
 
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
@@ -37,7 +36,7 @@ public class LoadHtsTestKits {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load hts test kits query from file");
         }
-        logger.info("Loading hts test kits");
+        LOGGER.info("Loading hts test kits");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.htscentral.url"))
@@ -49,8 +48,27 @@ public class LoadHtsTestKits {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        // Clean source data TODO: Sort out lot numbers
+//        final String regexOne = "^(0[1-9]|[12][0-9]|3[01])\\/(0[1-9]|1[0-2])\\/[0-9]{4}\\s(0[1-9]|1[0-2]):[0-5][0-9]:[0-5][0-9]\\s(AM|PM)$";
+//        final String regexTwo = "^(0[1-9]|[12][0-9]|3[01])\\/(0[1-9]|1[0-2])\\/[0-9]{4}\\s(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$";
+        sourceDf = sourceDf
+                .withColumn("TestResult2", when(col("TestResult2").equalTo("N/A"), null)
+                        .otherwise(col("TestResult2")))
+                .withColumn("TestKitName2", when(col("TestKitName2").equalTo(""), null)
+                        .otherwise(col("TestKitName2")))
+                .withColumn("TestKitName1", when(col("TestKitName1").equalTo(""), null)
+                        .otherwise(col("TestKitName1")));
+//                .withColumn("TestKitExpiry1",
+//                        when(col("TestKitExpiry1").rlike(regexOne), to_date(col("TestKitExpiry1"), "dd/MM/yyyy hh:mm:ss a"))
+//                                .when(col("TestKitExpiry1").rlike(regexTwo), to_date(col("TestKitExpiry1"), "dd/MM/yyyy HH:mm:ss"))
+//                                .otherwise(col("TestKitExpiry1")))
+//                .withColumn("TestKitExpiry2",
+//                        when(col("TestKitExpiry2").rlike(regexOne), to_date(col("TestKitExpiry2"), "dd/MM/yyyy hh:mm:ss a"))
+//                                .when(col("TestKitExpiry2").rlike(regexTwo), to_date(col("TestKitExpiry2"), "dd/MM/yyyy HH:mm:ss"))
+//                                .otherwise(col("TestKitExpiry2")));
 
-        logger.info("Loading target hts test kits");
+
+        LOGGER.info("Loading target hts test kits");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.ods.url"))
@@ -58,7 +76,7 @@ public class LoadHtsTestKits {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_TestKits")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -74,14 +92,12 @@ public class LoadHtsTestKits {
                 .withColumn("HtsNumberHash", upper(sha2(col("HtsNumber").cast(DataTypes.StringType), 256)));
 
         long newRecordsCount = newRecordsJoinDf.count();
-        logger.info("New record count is: " + newRecordsCount);
+        LOGGER.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-
-        newRecordsJoinDf = session.sql("select FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,EncounterId," +
-                "TestKitName1,TestKitLotNumber1,TestKitExpiry1,TestResult1,TestKitName2,TestKitLotNumber2,TestKitExpiry2," +
-                "TestResult2,PatientPKHash,HtsNumberHash" +
-                " from new_records");
+        final String columnList = "FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,EncounterId,TestKitName1," +
+                "TestKitLotNumber1,TestKitExpiry1,TestResult1,TestKitName2,TestKitLotNumber2,TestKitExpiry2,TestResult2";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -91,8 +107,10 @@ public class LoadHtsTestKits {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_TestKits")
                 .mode(SaveMode.Append)
                 .save();
+
     }
+
 }

@@ -58,7 +58,7 @@ public class LoadMnchAncVisits {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_AncVisits")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -79,18 +79,18 @@ public class LoadMnchAncVisits {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
-        newRecordsJoinDf = session.sql("select PatientMnchID,ANCClinicNumber,PatientPk,SiteCode,FacilityName,EMR," +
-                "Project,DateExtracted,VisitID,VisitDate,ANCVisitNo,GestationWeeks,Height,Weight,Temp,PulseRate," +
-                "RespiratoryRate,OxygenSaturation,MUAC,BP,BreastExam,AntenatalExercises,FGM,FGMComplications,Haemoglobin," +
-                "DiabetesTest,TBScreening,CACxScreen,CACxScreenMethod,WHOStaging,VLSampleTaken,VLDate,VLResult," +
-                "SyphilisTreatment,HIVStatusBeforeANC,HIVTestingDone,HIVTestType,HIVTest1,HIVTest1Result,HIVTest2," +
-                "HIVTest2Result,HIVTestFinalResult,SyphilisTestDone,SyphilisTestType,SyphilisTestResults,SyphilisTreated," +
+        final String columnList = "PatientMnchID,ANCClinicNumber,PatientPk,SiteCode,FacilityName,EMR,Project," +
+                "VisitID,VisitDate,ANCVisitNo,GestationWeeks,Height,Weight,Temp,PulseRate,RespiratoryRate," +
+                "OxygenSaturation,MUAC,BP,BreastExam,AntenatalExercises,FGM,FGMComplications,Haemoglobin,DiabetesTest," +
+                "TBScreening,CACxScreen,CACxScreenMethod,WHOStaging,VLSampleTaken,VLDate,VLResult,SyphilisTreatment," +
+                "HIVStatusBeforeANC,HIVTestingDone,HIVTestType,HIVTest1,HIVTest1Result,HIVTest2,HIVTest2Result," +
+                "HIVTestFinalResult,SyphilisTestDone,SyphilisTestType,SyphilisTestResults,SyphilisTreated," +
                 "MotherProphylaxisGiven,MotherGivenHAART,AZTBabyDispense,NVPBabyDispense,ChronicIllness,CounselledOn," +
                 "PartnerHIVTestingANC,PartnerHIVStatusANC,PostParturmFP,Deworming,MalariaProphylaxis,TetanusDose," +
-                "IronSupplementsGiven,ReceivedMosquitoNet,PreventiveServices,UrinalysisVariables,ReferredFrom,ReferredTo," +
-                "ReferralReasons,NextAppointmentANC,ClinicalNotes,Date_Created,Date_Last_Modified,PatientPKHash,PatientMnchIDHash" +
-                " from new_records");
+                "IronSupplementsGiven,ReceivedMosquitoNet,PreventiveServices,UrinalysisVariables,ReferredFrom," +
+                "ReferredTo,ReferralReasons,NextAppointmentANC,ClinicalNotes,Date_Last_Modified,PatientPKHash,PatientMnchIDHash";
 
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
                 .write()
@@ -99,7 +99,7 @@ public class LoadMnchAncVisits {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_AncVisits")
                 .mode(SaveMode.Append)
                 .save();
     }

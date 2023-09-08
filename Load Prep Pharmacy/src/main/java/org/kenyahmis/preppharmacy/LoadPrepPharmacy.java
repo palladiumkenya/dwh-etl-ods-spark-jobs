@@ -57,7 +57,7 @@ public class LoadPrepPharmacy {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.PrEP_Pharmacy")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -76,11 +76,10 @@ public class LoadPrepPharmacy {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        newRecordsJoinDf = session.sql("select ID,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status" +
-                ",StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber," +
-                "VisitID,RegimenPrescribed,DispenseDate,Duration,Date_Created,Date_Last_Modified," +
-                "PatientPKHash,PrepNumberHash" +
-                " from new_records");
+        final String columnList = "ID,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status," +
+                "StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber," +
+                "VisitID,RegimenPrescribed,DispenseDate,Duration,Date_Created,Date_Last_Modified,PatientPKHash,PrepNumberHash";
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -90,7 +89,7 @@ public class LoadPrepPharmacy {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.PrEP_Pharmacy")
                 .mode(SaveMode.Append)
                 .save();
     }

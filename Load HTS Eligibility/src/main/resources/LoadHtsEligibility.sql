@@ -8,6 +8,14 @@ SELECT DISTINCT  a.ID,a.[FacilityName],a.[SiteCode],a.[PatientPk],a.[HtsNumber],
               ,[ReasonsForIneligibility],[SpecificReasonForIneligibility],a.[FacilityId],[Cough],[DateTestedProvider],[Fever],[MothersStatus]
               ,[NightSweats],[ReferredForTesting],[ResultOfHIVSelf],[ScreenedTB],[TBStatus],[WeightLoss],[AssessmentOutcome],[ForcedSex]
               ,[ReceivedServices],[TypeGBV]
+              ,Disability
+              ,a.DisabilityType
+              ,HTSStrategy
+              ,HTSEntryPoint
+              ,HIVRiskCategory
+              ,ReasonRefferredForTesting
+              ,ReasonNotReffered
+              ,[HtsRiskScore]
 
 FROM [HTSCentral].[dbo].[HtsEligibilityExtract] (NoLock)a
     Inner join ( select ct.sitecode,ct.patientPK,ct.encounterID,ct.visitID,max(DateCreated)MaxDateCreated  from [HTSCentral].[dbo].[HtsEligibilityExtract] ct

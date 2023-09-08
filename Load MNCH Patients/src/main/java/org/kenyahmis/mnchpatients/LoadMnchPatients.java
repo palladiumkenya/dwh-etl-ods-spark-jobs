@@ -20,6 +20,7 @@ public class LoadMnchPatients {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load MNCH Patients");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
@@ -56,7 +57,7 @@ public class LoadMnchPatients {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_Patient")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -76,13 +77,12 @@ public class LoadMnchPatients {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
+        final String columnList = "PatientPk,SiteCode,Emr,Project,DateExtracted,FacilityName,Pkv,PatientMnchID," +
+                "PatientHeiID,Gender,DOB,FirstEnrollmentAtMnch,Occupation,MaritalStatus,EducationLevel," +
+                "PatientResidentCounty,PatientResidentSubCounty,PatientResidentWard,InSchool," +
+                "Date_Created,Date_Last_Modified,NUPI,PatientPKHash,NupiHash,PatientMnchIDHash";
 
-        newRecordsJoinDf = session.sql("select PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status,StatusDate," +
-                "DateExtracted,FacilityName,Pkv,PatientMnchID,PatientHeiID,Gender,DOB,FirstEnrollmentAtMnch,Occupation," +
-                "MaritalStatus,EducationLevel,PatientResidentCounty,PatientResidentSubCounty,PatientResidentWard,InSchool," +
-                "Date_Created,Date_Last_Modified,NUPI," +
-                "PatientPKHash,NupiHash,PatientMnchIDHash" +
-                " from new_records");
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records",columnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -92,7 +92,7 @@ public class LoadMnchPatients {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.MNCH_Patient")
                 .mode(SaveMode.Append)
                 .save();
     }

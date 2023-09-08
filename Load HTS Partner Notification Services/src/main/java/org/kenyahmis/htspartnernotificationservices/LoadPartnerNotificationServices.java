@@ -50,6 +50,24 @@ public class LoadPartnerNotificationServices {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        //Clean source data
+        sourceDf = sourceDf
+                .withColumn("FacilityLinkedTo", when(col("FacilityLinkedTo").equalTo(""), null)
+                        .otherwise(col("FacilityLinkedTo")))
+                .withColumn("PnsApproach", when(col("PnsApproach").equalTo("Pr: Provider Referral").or(col("PnsApproach").equalTo("D: Dual Referral")), "Provider Referral")
+                        .when(col("PnsApproach").equalTo("Cr: Passive Referral"), "Passive Referral")
+                        .otherwise(col("PnsApproach")))
+                .withColumn("LinkedToCare", when(col("LinkedToCare").equalTo("Y"), "Yes")
+                        .when(col("LinkedToCare").equalTo("N"), "No")
+                        .otherwise(col("LinkedToCare")))
+                .withColumn("PnsConsent", when(col("PnsConsent").equalTo("0"), "No")
+                        .otherwise(col("PnsConsent")))
+                .withColumn("ScreenedForIpv", when(col("ScreenedForIpv").equalTo("N/A"), null)
+                        .otherwise(col("ScreenedForIpv")))
+                .withColumn("CccNumber", when(col("CccNumber").equalTo(""), null)
+                        .otherwise(col("CccNumber")))
+                .withColumn("Age", when(col("Age").lt(0).or(col("Age").gt(100)), null)
+                        .otherwise(col("Age")));
 
         logger.info("Loading target hts partner notification services");
         Dataset<Row> targetDf = session.read()
@@ -59,7 +77,7 @@ public class LoadPartnerNotificationServices {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_PartnerNotificationServices")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -74,17 +92,16 @@ public class LoadPartnerNotificationServices {
         // Hash PII columns
         newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPk").cast(DataTypes.StringType), 256)))
                 .withColumn("HtsNumberHash", upper(sha2(col("HtsNumber").cast(DataTypes.StringType), 256)));
-
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
+        String sourceColumnList = "ID,FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,PartnerPatientPk," +
+                "KnowledgeOfHivStatus,PartnerPersonID,CccNumber,IpvScreeningOutcome,ScreenedForIpv,PnsConsent," +
+                "RelationsipToIndexClient,LinkedToCare,MaritalStatus,PnsApproach,FacilityLinkedTo,Gender," +
+                "CurrentlyLivingWithIndexClient,Age,DateElicited,Dob,LinkDateLinkedToCare";
 
-        newRecordsJoinDf = session.sql("select ID,FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project," +
-                "PartnerPatientPk,KnowledgeOfHivStatus,PartnerPersonID,CccNumber,IpvScreeningOutcome,ScreenedForIpv," +
-                "PnsConsent,RelationsipToIndexClient,LinkedToCare,MaritalStatus,PnsApproach,FacilityLinkedTo,Gender," +
-                "CurrentlyLivingWithIndexClient,Age,DateElicited,Dob,LinkDateLinkedToCare,PatientPKHash,HtsNumberHash" +
-                " from new_records");
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", sourceColumnList));
 
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
@@ -94,7 +111,7 @@ public class LoadPartnerNotificationServices {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_PartnerNotificationServices")
                 .mode(SaveMode.Append)
                 .save();
     }

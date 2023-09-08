@@ -7,20 +7,21 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-
+import java.sql.Date;
+import java.time.LocalDate;
 import static org.apache.spark.sql.functions.*;
 import static org.apache.spark.sql.functions.col;
 
 public class LoadHtsClientLinkages {
-    private static final Logger logger = LoggerFactory.getLogger(LoadHtsClientLinkages.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoadHtsClientLinkages.class);
 
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load HTS Client Linkages");
+        conf.setMaster("local[*]");
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
@@ -30,16 +31,16 @@ public class LoadHtsClientLinkages {
         String sourceQuery;
         InputStream inputStream = LoadHtsClientLinkages.class.getClassLoader().getResourceAsStream(sourceQueryFileName);
         if (inputStream == null) {
-            logger.error(sourceQueryFileName + " not found");
+            LOGGER.error(sourceQueryFileName + " not found");
             return;
         }
         try {
             sourceQuery = IOUtils.toString(inputStream, Charset.defaultCharset());
         } catch (IOException e) {
-            logger.error("Failed to load hts client linkages query from file", e);
+            LOGGER.error("Failed to load hts client linkages query from file", e);
             return;
         }
-        logger.info("Loading hts client linkages");
+        LOGGER.info("Loading hts client linkages");
         Dataset<Row> sourceDf = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.htscentral.url"))
@@ -51,8 +52,16 @@ public class LoadHtsClientLinkages {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        // Clean source data
+        sourceDf = sourceDf
+                .withColumn("ReferralDate", when(col("ReferralDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1)))), null)
+                        .otherwise(col("ReferralDate")))
+                .withColumn("DateEnrolled", when(col("DateEnrolled").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1)))), null)
+                        .otherwise(col("DateEnrolled")))
+                .withColumn("DatePrefferedToBeEnrolled", when(col("DatePrefferedToBeEnrolled").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1)))), null)
+                        .otherwise(col("DatePrefferedToBeEnrolled")));
 
-        logger.info("Loading target hts client linkages");
+        LOGGER.info("Loading target hts client linkages");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
                 .option("url", rtConfig.get("spark.ods.url"))
@@ -60,7 +69,7 @@ public class LoadHtsClientLinkages {
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
                 .option("numpartitions", rtConfig.get("spark.ods.numpartitions"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_ClientLinkages")
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
@@ -76,15 +85,13 @@ public class LoadHtsClientLinkages {
                 .withColumn("HtsNumberHash", upper(sha2(col("HtsNumber").cast(DataTypes.StringType), 256)));
 
         long newRecordsCount = newRecordsJoinDf.count();
-        logger.info("New record count is: " + newRecordsCount);
+        LOGGER.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
+        String columnList = "FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,EnrolledFacilityName,ReferralDate," +
+                "DateEnrolled,DatePrefferedToBeEnrolled,FacilityReferredTo,HandedOverTo,HandedOverToCadre,ReportedCCCNumber";
 
-        newRecordsJoinDf = session.sql("select FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,EnrolledFacilityName," +
-                "ReferralDate,DateEnrolled,DatePrefferedToBeEnrolled,FacilityReferredTo,HandedOverTo,HandedOverToCadre," +
-                "ReportedCCCNumber,PatientPKHash,HtsNumberHash" +
-                " from new_records");
-
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
         newRecordsJoinDf
                 .repartition(Integer.parseInt(rtConfig.get("spark.ods.numpartitions")))
                 .write()
@@ -93,7 +100,7 @@ public class LoadHtsClientLinkages {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-                .option("dbtable", rtConfig.get("spark.ods.dbtable"))
+                .option("dbtable", "dbo.HTS_ClientLinkages")
                 .mode(SaveMode.Append)
                 .save();
     }
