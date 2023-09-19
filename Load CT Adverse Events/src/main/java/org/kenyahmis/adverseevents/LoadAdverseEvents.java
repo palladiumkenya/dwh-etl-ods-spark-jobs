@@ -63,7 +63,6 @@ public class LoadAdverseEvents {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-//                .option("dbtable", "dbo.lkp_regimen")
                 .option("query", "select source_name, target_name from dbo.lkp_regimen")
                 .load();
 
