@@ -57,6 +57,8 @@
         <module>Load Prep Pharmacy</module>
         <module>Load Prep Visits</module>
         <module>Core</module>
+        <module>Load CT Cervical Cancer Screening</module>
+        <module>Load MNCH Immunization</module>
     </modules>
 
     <dependencyManagement>

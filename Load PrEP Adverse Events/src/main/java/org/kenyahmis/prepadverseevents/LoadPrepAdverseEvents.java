@@ -7,12 +7,12 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 
 import static org.apache.spark.sql.functions.*;
-import static org.apache.spark.sql.functions.col;
 
 public class LoadPrepAdverseEvents {
     private static final Logger logger = LoggerFactory.getLogger(LoadPrepAdverseEvents.class);
@@ -48,6 +48,24 @@ public class LoadPrepAdverseEvents {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        sourceDf = sourceDf
+                .withColumn("AdverseEventRegimen", when(col("AdverseEventRegimen").equalTo(""), null)
+                        .otherwise(col("AdverseEventRegimen")))
+                .withColumn("AdverseEventIsPregnant", when(col("AdverseEventIsPregnant").equalTo(""), null)
+                        .otherwise(col("AdverseEventIsPregnant")))
+                .withColumn("AdverseEventClinicalOutcome", when(col("AdverseEventClinicalOutcome").equalTo(""), null)
+                        .otherwise(col("AdverseEventClinicalOutcome")))
+                .withColumn("AdverseEventActionTaken", when(col("AdverseEventActionTaken").equalTo(""), null)
+                        .otherwise(col("AdverseEventActionTaken")))
+                .withColumn("Severity", when(col("Severity").equalTo(""), null)
+                        .otherwise(col("Severity")))
+                .withColumn("AdverseEventEndDate", when(col("AdverseEventEndDate").equalTo(""), null)
+                        .otherwise(col("AdverseEventEndDate")))
+                .withColumn("AdverseEventStartDate", when(col("AdverseEventStartDate").equalTo(""), null)
+                        .otherwise(col("AdverseEventStartDate")))
+                .withColumn("AdverseEvent", when(col("AdverseEvent").equalTo(""), null)
+                        .otherwise(col("AdverseEvent")));
+
         logger.info("Loading target adverse events from file");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
@@ -74,7 +92,7 @@ public class LoadPrepAdverseEvents {
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
-        
+
         final String columnList = "Id,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status,StatusDate,DateExtracted,FacilityId," +
                 "FacilityName,PrepNumber,AdverseEvent,AdverseEventStartDate,AdverseEventEndDate,Severity,VisitDate," +
                 "AdverseEventActionTaken,AdverseEventClinicalOutcome,AdverseEventIsPregnant,AdverseEventCause,AdverseEventRegimen," +

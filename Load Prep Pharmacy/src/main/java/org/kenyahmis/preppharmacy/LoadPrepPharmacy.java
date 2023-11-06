@@ -11,9 +11,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.Date;
+import java.time.LocalDate;
 
 import static org.apache.spark.sql.functions.*;
-import static org.apache.spark.sql.functions.col;
 
 public class LoadPrepPharmacy {
     private static final Logger logger = LoggerFactory.getLogger(LoadPrepPharmacy.class);
@@ -48,6 +49,16 @@ public class LoadPrepPharmacy {
                 .option("numpartitions", rtConfig.get("spark.prepcentral.numpartitions"))
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
+
+        sourceDf = sourceDf
+                .withColumn("Duration", when(col("Duration").gt(lit(12)), null)
+                        .otherwise(col("Duration")))
+                .withColumn("DispenseDate",
+                        when(col("DispenseDate").equalTo("")
+                                .or(col("DispenseDate").lt(lit(Date.valueOf(LocalDate.of(1980, 1, 1))))), null)
+                                .otherwise(col("DispenseDate")))
+                .withColumn("RegimenPrescribed", when(col("RegimenPrescribed").equalTo(""), null)
+                        .otherwise(col("RegimenPrescribed")));
 
         logger.info("Loading target prep pharmacy");
         Dataset<Row> targetDf = session.read()

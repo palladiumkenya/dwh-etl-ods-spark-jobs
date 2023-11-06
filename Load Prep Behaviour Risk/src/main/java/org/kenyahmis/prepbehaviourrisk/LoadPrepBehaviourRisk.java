@@ -49,6 +49,34 @@ public class LoadPrepBehaviourRisk {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        sourceDf = sourceDf
+                .withColumn("NumberofchildrenWithPartner", when(col("NumberofchildrenWithPartner").equalTo(""), null)
+                        .otherwise(col("NumberofchildrenWithPartner")))
+                .withColumn("SexWithoutCondom", when(col("SexWithoutCondom").equalTo(""), null)
+                        .otherwise(col("SexWithoutCondom")))
+                .withColumn("MonthsknownHIVSerodiscordant", when(col("MonthsknownHIVSerodiscordant").equalTo(""), null)
+                        .otherwise(col("MonthsknownHIVSerodiscordant")))
+                .withColumn("HIVPartnerARTStartDate", when(col("HIVPartnerARTStartDate").equalTo(""), null)
+                        .otherwise(col("HIVPartnerARTStartDate")))
+                .withColumn("PartnerEnrolledtoCCC", when(col("PartnerEnrolledtoCCC").equalTo(""), null)
+                        .otherwise(col("PartnerEnrolledtoCCC")))
+                .withColumn("ReferralToOtherPrevServices", when(col("ReferralToOtherPrevServices").equalTo(""), null)
+                        .otherwise(col("ReferralToOtherPrevServices")))
+                .withColumn("RiskReductionEducationOffered", when(col("RiskReductionEducationOffered").equalTo(""), null)
+                        .otherwise(col("RiskReductionEducationOffered")))
+                .withColumn("PrEPDeclineReason", when(col("PrEPDeclineReason").equalTo(""), null)
+                        .otherwise(col("PrEPDeclineReason")))
+                .withColumn("ClientWillingToTakePrep", when(col("ClientWillingToTakePrep").equalTo(""), null)
+                        .otherwise(col("ClientWillingToTakePrep")))
+                .withColumn("ClientRisk", when(col("ClientRisk").equalTo(""), null)
+                        .otherwise(col("ClientRisk")))
+                .withColumn("IsPartnerHighrisk", when(col("IsPartnerHighrisk").equalTo(""), null)
+                        .otherwise(col("IsPartnerHighrisk")))
+                .withColumn("IsHIVPositivePartnerCurrentonART", when(col("IsHIVPositivePartnerCurrentonART").equalTo(""), null)
+                        .otherwise(col("IsHIVPositivePartnerCurrentonART")))
+                .withColumn("SexPartnerHIVStatus", when(col("SexPartnerHIVStatus").equalTo(""), null)
+                        .otherwise(col("SexPartnerHIVStatus")));
+
         logger.info("Loading target behaviour risk from file");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")

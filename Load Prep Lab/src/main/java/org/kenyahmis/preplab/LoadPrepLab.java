@@ -48,6 +48,12 @@ public class LoadPrepLab {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        sourceDf = sourceDf
+                .withColumn("Reason", when(col("Reason").equalTo(""), null)
+                        .otherwise(col("Reason")))
+                .withColumn("SampleDate", when(col("SampleDate").equalTo(""), null)
+                        .otherwise(col("SampleDate")));
+
         logger.info("Loading target prep lab");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")

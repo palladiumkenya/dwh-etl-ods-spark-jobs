@@ -49,6 +49,12 @@ public class LoadPrepCareTermination {
                 .load();
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
+        sourceDf = sourceDf
+                .withColumn("DateOfLastPrepDose", when(col("DateOfLastPrepDose").equalTo(""), null)
+                        .otherwise(col("DateOfLastPrepDose")))
+                .withColumn("ExitReason", when(col("ExitReason").equalTo(""), null)
+                        .otherwise(col("ExitReason")));
+
         logger.info("Loading target care termination from file");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
