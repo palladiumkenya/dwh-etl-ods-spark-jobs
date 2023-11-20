@@ -4,16 +4,12 @@ import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
 import org.apache.spark.storage.StorageLevel;
-import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Properties;
+
 
 public class LoadMNCHImmunization {
     private static final Logger logger = LoggerFactory.getLogger(LoadMNCHImmunization.class);
@@ -67,12 +63,6 @@ public class LoadMNCHImmunization {
         sourceDf.createOrReplaceTempView("source_immunization");
         targetDf.createOrReplaceTempView("target_immunization");
 
-//        Properties connectionProperties = new Properties();
-//        connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
-//        connectionProperties.setProperty("user", rtConfig.get("spark.ods.user"));
-//        connectionProperties.setProperty("pass", rtConfig.get("spark.ods.password"));
-//        DatabaseUtils dbUtils = new DatabaseUtils(connectionProperties);
-
         // Get new records
         Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_immunization s LEFT ANTI JOIN target_immunization t ON s.SiteCode <=> t.SiteCode AND" +
                 " s.PatientPK <=> t.PatientPK and s.PatientMnchID <=> t.PatientMnchID and s.ID = t.ID");
@@ -102,16 +92,5 @@ public class LoadMNCHImmunization {
                 .mode(SaveMode.Append)
                 .save();
 
-        // Hash PII
-//        HashMap<String, String> hashColumns = new HashMap<>();
-//        hashColumns.put("PatientID", "PatientIDHash");
-//        hashColumns.put("PatientPK", "PatientPKHash");
-//
-//        try {
-//            dbUtils.hashPIIColumns("MNCH_Immunization", hashColumns);
-//        } catch (SQLException se) {
-//            se.printStackTrace();
-//            throw new RuntimeException();
-//        }
     }
 }

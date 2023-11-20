@@ -5,12 +5,16 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
+import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Properties;
 
 import static org.apache.spark.sql.functions.*;
 import static org.apache.spark.sql.functions.col;
@@ -78,8 +82,7 @@ public class LoadMnchMotherBabyPairs {
 
 
         final String columnList = "PatientIDCCC,PatientPk,BabyPatientPK,MotherPatientPK,BabyPatientMncHeiID," +
-                "MotherPatientMncHeiID,SiteCode,FacilityName,EMR,Project,Date_Last_Modified ,PatientPKHash," +
-                "BabyPatientPKHash,MotherPatientPKHash,MotherPatientMncHeiIDHash";
+                "MotherPatientMncHeiID,SiteCode,FacilityName,EMR,Project,Date_Last_Modified";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
@@ -93,5 +96,25 @@ public class LoadMnchMotherBabyPairs {
                 .option("dbtable", "dbo.MNCH_MotherBabyPairs")
                 .mode(SaveMode.Append)
                 .save();
+
+        Properties connectionProperties = new Properties();
+        connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
+        connectionProperties.setProperty("user", rtConfig.get("spark.ods.user"));
+        connectionProperties.setProperty("pass", rtConfig.get("spark.ods.password"));
+        DatabaseUtils dbUtils = new DatabaseUtils(connectionProperties);
+
+        // Hash PII
+        HashMap<String, String> hashColumns = new HashMap<>();
+        hashColumns.put("MotherPatientMncHeiID", "MotherPatientMncHeiIDHash");
+        hashColumns.put("PatientPK", "PatientPKHash");
+        hashColumns.put("MotherPatientPK", "MotherPatientPKHash");
+        hashColumns.put("BabyPatientPK", "BabyPatientPKHash");
+
+        try {
+            dbUtils.hashPIIColumns("dbo.MNCH_MotherBabyPairs", hashColumns);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new RuntimeException();
+        }
     }
 }

@@ -3,14 +3,16 @@ package org.kenyahmis.htstestkits;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
-import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
+import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Properties;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -67,7 +69,6 @@ public class LoadHtsTestKits {
 //                                .when(col("TestKitExpiry2").rlike(regexTwo), to_date(col("TestKitExpiry2"), "dd/MM/yyyy HH:mm:ss"))
 //                                .otherwise(col("TestKitExpiry2")));
 
-
         LOGGER.info("Loading target hts test kits");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
@@ -88,8 +89,8 @@ public class LoadHtsTestKits {
                 "target_hts_test_kits t ON s.PatientPk <=> t.PatientPk AND s.SiteCode <=> t.SiteCode");
 
         // Hash PII columns
-        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPk").cast(DataTypes.StringType), 256)))
-                .withColumn("HtsNumberHash", upper(sha2(col("HtsNumber").cast(DataTypes.StringType), 256)));
+//        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPk").cast(DataTypes.StringType), 256)))
+//                .withColumn("HtsNumberHash", upper(sha2(col("HtsNumber").cast(DataTypes.StringType), 256)));
 
         long newRecordsCount = newRecordsJoinDf.count();
         LOGGER.info("New record count is: " + newRecordsCount);
@@ -111,6 +112,22 @@ public class LoadHtsTestKits {
                 .mode(SaveMode.Append)
                 .save();
 
-    }
+        Properties connectionProperties = new Properties();
+        connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
+        connectionProperties.setProperty("user", rtConfig.get("spark.ods.user"));
+        connectionProperties.setProperty("pass", rtConfig.get("spark.ods.password"));
+        DatabaseUtils dbUtils = new DatabaseUtils(connectionProperties);
 
+        // Hash PII
+        HashMap<String, String> hashColumns = new HashMap<>();
+        hashColumns.put("HtsNumber", "HtsNumberHash");
+        hashColumns.put("PatientPK", "PatientPKHash");
+
+        try {
+            dbUtils.hashPIIColumns("dbo.HTS_TestKits", hashColumns);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new RuntimeException();
+        }
+    }
 }

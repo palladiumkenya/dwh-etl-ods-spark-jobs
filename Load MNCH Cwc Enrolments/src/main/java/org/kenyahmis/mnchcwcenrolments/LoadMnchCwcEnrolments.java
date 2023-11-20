@@ -5,12 +5,16 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
+import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Properties;
 
 import static org.apache.spark.sql.functions.*;
 import static org.apache.spark.sql.functions.col;
@@ -69,9 +73,9 @@ public class LoadMnchCwcEnrolments {
                 "target_mnch_cwc_enrolments t ON s.PatientPk <=> t.PatientPk AND s.SiteCode <=> t.SiteCode");
 
         // Hash PII columns
-        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPk").cast(DataTypes.StringType), 256)))
-                .withColumn("MothersCCCNoHash", upper(sha2(col("MothersCCCNo").cast(DataTypes.StringType), 256)))
-                .withColumn("MothersPkvHash", upper(sha2(col("MothersPkv").cast(DataTypes.StringType), 256)));
+//        newRecordsJoinDf = newRecordsJoinDf.withColumn("PatientPKHash", upper(sha2(col("PatientPk").cast(DataTypes.StringType), 256)))
+//                .withColumn("MothersCCCNoHash", upper(sha2(col("MothersCCCNo").cast(DataTypes.StringType), 256)))
+//                .withColumn("MothersPkvHash", upper(sha2(col("MothersPkv").cast(DataTypes.StringType), 256)));
 
         long newRecordsCount = newRecordsJoinDf.count();
         logger.info("New record count is: " + newRecordsCount);
@@ -82,7 +86,7 @@ public class LoadMnchCwcEnrolments {
                 "MothersPkv,RegistrationAtCWC,RegistrationAtHEI,VisitID,Gestation,BirthWeight,BirthLength,BirthOrder," +
                 "BirthType,PlaceOfDelivery,ModeOfDelivery,SpecialNeeds,SpecialCare,HEI,MotherAlive,MothersCCCNo," +
                 "TransferIn,TransferInDate,TransferredFrom,HEIDate,NVP,BreastFeeding,ReferredFrom,ARTMother," +
-                "ARTRegimenMother,ARTStartDateMother,Date_Created,Date_Last_Modified,PatientPKHash,MothersPkvHash,MothersCCCNoHash";
+                "ARTRegimenMother,ARTStartDateMother,Date_Created,Date_Last_Modified";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf
@@ -96,5 +100,24 @@ public class LoadMnchCwcEnrolments {
                 .option("dbtable", "dbo.MNCH_CwcEnrolments")
                 .mode(SaveMode.Append)
                 .save();
+
+        Properties connectionProperties = new Properties();
+        connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
+        connectionProperties.setProperty("user", rtConfig.get("spark.ods.user"));
+        connectionProperties.setProperty("pass", rtConfig.get("spark.ods.password"));
+        DatabaseUtils dbUtils = new DatabaseUtils(connectionProperties);
+
+        // Hash PII
+        HashMap<String, String> hashColumns = new HashMap<>();
+        hashColumns.put("MothersPkv", "MothersPkvHash");
+        hashColumns.put("MothersCCCNo", "MothersCCCNoHash");
+        hashColumns.put("PatientPK", "PatientPKHash");
+
+        try {
+            dbUtils.hashPIIColumns("dbo.MNCH_CwcEnrolments", hashColumns);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new RuntimeException();
+        }
     }
 }
