@@ -11,8 +11,8 @@ SELECT Distinct
     OE.[TransitionAttritionReason],
     OE.[OutcomeDate]
         ,P.ID,OE.[Date_Created],OE.[Date_Last_Modified]
-
+        ,OE.RecordUUID,OE.voided
 FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
-    INNER JOIN [DWAPICentral].[dbo].[OtzExtract](NoLock) OE ON OE.[PatientId] = P.ID AND OE.Voided = 0
+    INNER JOIN [DWAPICentral].[dbo].[OtzExtract](NoLock) OE ON OE.[PatientId] = P.ID
     INNER JOIN [DWAPICentral].[dbo].[Facility](NoLock) F ON P.[FacilityId] = F.Id AND F.Voided = 0
-WHERE P.gender != 'Unknown'
+WHERE P.gender != 'Unknown' AND F.code >0

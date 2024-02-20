@@ -29,7 +29,6 @@ public class LoadMnchLabs {
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
 
-
         final String sourceQueryFileName = "LoadMnchLabs.sql";
         String sourceQuery;
         InputStream inputStream = LoadMnchLabs.class.getClassLoader().getResourceAsStream(sourceQueryFileName);

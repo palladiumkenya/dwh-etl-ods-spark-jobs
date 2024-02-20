@@ -17,11 +17,13 @@ SELECT 	DISTINCT a.[FacilityName]
 
 						FROM [HTSCentral].[dbo].[ClientLinkages](NoLock) a--
 						INNER JOIN (
-								SELECT distinct SiteCode,PatientPK, MAX(DateExtracted) AS MaxDateExtracted
+								SELECT distinct SiteCode,PatientPK, MAX(cast(DateExtracted as date)) AS MaxDateExtracted
 								FROM  [HTSCentral].[dbo].[ClientLinkages](NoLock)
 								GROUP BY SiteCode,PatientPK
 							) tm
-				     ON a.[SiteCode] = tm.[SiteCode] and a.PatientPK=tm.PatientPK and a.DateExtracted = tm.MaxDateExtracted
+				     ON a.[SiteCode] = tm.[SiteCode] and
+					 	a.PatientPK=tm.PatientPK and
+						cast(a.DateExtracted as date) = tm.MaxDateExtracted
 						INNER JOIN [HTSCentral].[dbo].Clients (NoLock) Cl
 						on a.PatientPk = Cl.PatientPk and a.SiteCode = Cl.SiteCode
 						WHERE a.DateExtracted > '2019-09-08'

@@ -11,11 +11,9 @@ SELECT distinct  P.[PatientPk],P.[SiteCode],P.[Emr], P.[Project], P.[Processed],
               ,[LMP]
               ,[MaternalDeathAudited]
               ,[OnARTMat]
-              ,[ReferralReason]
+              ,[ReferralReason],RecordUUID
 FROM [MNCHCentral].[dbo].[MatVisits] P(Nolock)
-    inner join (select tn.PatientPK,tn.SiteCode,max(tn.DateExtracted)MaxDateExtracted FROM [MNCHCentral].[dbo].[MatVisits] (NoLock)tn
+    inner join (select tn.PatientPK,tn.SiteCode,max(ID) As MaxID,max(cast(tn.DateExtracted as date))MaxDateExtracted FROM [MNCHCentral].[dbo].[MatVisits] (NoLock)tn
     group by tn.PatientPK,tn.SiteCode)tm
-on P.PatientPk = tm.PatientPk and p.SiteCode = tm.SiteCode and p.DateExtracted = tm.MaxDateExtracted
-    -- 	INNER JOIN  [MNCHCentral].[dbo].[MnchPatients] MnchP(Nolock) -- to be reviwed later
-    --on P.patientPK = MnchP.patientPK and P.Sitecode = MnchP.Sitecode
+on P.PatientPk = tm.PatientPk and p.SiteCode = tm.SiteCode and cast(p.DateExtracted as date) = tm.MaxDateExtracted and p.ID = tm.MaxID
     INNER JOIN [MNCHCentral].[dbo].[Facilities] F ON P.[FacilityId] = F.Id

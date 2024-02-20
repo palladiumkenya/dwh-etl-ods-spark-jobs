@@ -19,15 +19,15 @@ SELECT distinct a.[Id]
               ,[DateOfLastPrepDose]
               ,a.[Date_Created]
               ,a.[Date_Last_Modified]
+              ,a.RecordUUID
 FROM [PREPCentral].[dbo].[PrepCareTerminations](NoLock)a
     inner join    [PREPCentral].[dbo].[PrepPatients](NoLock) c
 on a.SiteCode = c.SiteCode
     and a.PatientPk =  c.PatientPk
-    --and a.ID = c.ID
-    INNER JOIN (SELECT PatientPk, SiteCode, max(Created) AS maxCreated from [PREPCentral].[dbo].[PrepCareTerminations]
+    INNER JOIN (SELECT PatientPk, SiteCode,max(ID) As MaxID, max(cast(Created as date)) AS maxCreated from [PREPCentral].[dbo].[PrepCareTerminations]
     group by PatientPk,SiteCode) tn
-    ON a.PatientPk = tn.PatientPk and a.SiteCode = tn.SiteCode and a.Created = tn.maxCreated
+    ON a.PatientPk = tn.PatientPk and a.SiteCode = tn.SiteCode and cast(a.Created as date)= tn.maxCreated and a.ID = tn.MaxID
 
-    INNER JOIN (SELECT PatientPk, SiteCode, max(DateExtracted) AS maxDateExtracted from [PREPCentral].[dbo].[PrepCareTerminations]
+    INNER JOIN (SELECT PatientPk, SiteCode,max(ID) As MaxID, max(cast(DateExtracted as date)) AS maxDateExtracted from [PREPCentral].[dbo].[PrepCareTerminations]
     group by PatientPk,SiteCode) tm
-    ON a.PatientPk = tm.PatientPk and a.SiteCode = tm.SiteCode and a.DateExtracted = tm.maxDateExtracted
+    ON a.PatientPk = tm.PatientPk and a.SiteCode = tm.SiteCode and cast(a.DateExtracted as date) = tm.maxDateExtracted and a.ID = tm.MaxID

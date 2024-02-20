@@ -25,6 +25,7 @@ public class LoadPatientPharmacy {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load Patient Pharmacy");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();

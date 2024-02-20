@@ -3,7 +3,6 @@ package org.kenyahmis.mnchmatvisits;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
-import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;
@@ -15,9 +14,6 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Properties;
-
-import static org.apache.spark.sql.functions.*;
-import static org.apache.spark.sql.functions.col;
 
 public class LoadMnchMatVisits {
     private static final Logger logger = LoggerFactory.getLogger(LoadMnchMatVisits.class);

@@ -25,6 +25,7 @@ public class LoadMnchCwcEnrolments {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load MNCH Cwc Enrolments");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();

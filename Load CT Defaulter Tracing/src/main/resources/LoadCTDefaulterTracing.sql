@@ -14,9 +14,10 @@ SELECT distinct P.[PatientPID] AS PatientPK
               ,[TrueStatus]
               ,[CauseOfDeath]
               ,[Comments]
-              ,Cast([BookingDate] As Date)[BookingDate]
+              ,Cast([BookingDate] As Date)[BookingDate],
+    C.RecordUUID,C.voided
               ,P.ID,C.[Date_Created],C.[Date_Last_Modified]
 FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
-    INNER JOIN [DWAPICentral].[dbo].[DefaulterTracingExtract](NoLock) C ON C.[PatientId]= P.ID AND C.Voided=0
+    INNER JOIN [DWAPICentral].[dbo].[DefaulterTracingExtract](NoLock) C ON C.[PatientId]= P.ID
     INNER JOIN [DWAPICentral].[dbo].[Facility](NoLock) F ON P.[FacilityId] = F.Id AND F.Voided=0
-WHERE P.gender != 'Unknown'
+WHERE P.gender != 'Unknown' AND F.code >0

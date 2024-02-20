@@ -29,7 +29,6 @@ public class LoadCTContactListing {
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
 
-
         final String queryFileName = "LoadCTContactListing.sql";
         String query;
         InputStream inputStream = LoadCTContactListing.class.getClassLoader().getResourceAsStream(queryFileName);

@@ -29,6 +29,7 @@ public class LoadDepressionScreening {
                 .getOrCreate();
         RuntimeConfig rtConfig = session.conf();
 
+
         final String sourceQueryFileName = "LoadDepressionScreening.sql";
         String sourceQuery;
         InputStream inputStream = LoadDepressionScreening.class.getClassLoader().getResourceAsStream(sourceQueryFileName);

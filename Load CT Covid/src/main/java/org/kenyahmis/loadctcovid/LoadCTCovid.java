@@ -3,7 +3,6 @@ package org.kenyahmis.loadctcovid;
 import org.apache.commons.io.IOUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
-import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import org.kenyahmis.core.DatabaseUtils;
 import org.slf4j.Logger;

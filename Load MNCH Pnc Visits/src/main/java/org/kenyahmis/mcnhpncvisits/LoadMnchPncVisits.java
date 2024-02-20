@@ -23,7 +23,6 @@ public class LoadMnchPncVisits {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load MNCH Pnc Visits");
-
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();

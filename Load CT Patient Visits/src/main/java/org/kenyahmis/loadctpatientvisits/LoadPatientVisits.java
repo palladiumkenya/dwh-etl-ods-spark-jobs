@@ -133,7 +133,7 @@ public class LoadPatientVisits {
                 .load();
 
         int targetPartitions = targetDf.rdd().getNumPartitions();
-        logger.info("Target partitions are: {}", targetPartitions);
+//        logger.info("Target partitions are: {}", targetPartitions);
         targetDf.persist(StorageLevel.DISK_ONLY());
         targetDf.createOrReplaceTempView("target_visits");
         sourceDf.createOrReplaceTempView("source_visits");
@@ -160,8 +160,11 @@ public class LoadPatientVisits {
 
         Dataset<Row> dfMergeFinal = unmatchedFromJoinDf.union(sourceMergeDf);
 
-        dfMergeFinal = dfMergeFinal.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
-                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
+        long mergedFinalCount = dfMergeFinal.count();
+        logger.info("Merged final count: " + mergedFinalCount);
+
+//        dfMergeFinal = dfMergeFinal.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
+//                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
 
         Properties connectionProperties = new Properties();
         connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
@@ -188,8 +191,7 @@ public class LoadPatientVisits {
             throw new RuntimeException(String.format("Failed to recreate %s table", ddlFileName));
         }
 
-//        long mergedFinalCount = dfMergeFinal.count();
-//        logger.info("Merged final count: " + mergedFinalCount);
+
         dfMergeFinal
                 .repartition(50)
                 .write()
@@ -208,6 +210,7 @@ public class LoadPatientVisits {
         hashColumns.put("PatientPK", "PatientPKHash");
         try {
             dbUtils.hashPIIColumns("CT_PatientVisits", hashColumns);
+            logger.info("Successfully hashed PII columns");
         } catch (SQLException se) {
             se.printStackTrace();
             throw new RuntimeException();

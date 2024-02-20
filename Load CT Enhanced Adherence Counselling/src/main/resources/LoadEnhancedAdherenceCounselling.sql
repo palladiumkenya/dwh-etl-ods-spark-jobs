@@ -17,8 +17,8 @@ SELECT Distinct
     EAC.[EACReviewStrategy],EAC.[EACReferral],EAC.[EACReferralApp],EAC.[EACReferralExperience],EAC.[EACHomevisit],
     EAC.[EACAdherencePlan],EAC.[EACFollowupDate]
         ,EAC.ID ,EAC.[Date_Created],EAC.[Date_Last_Modified]
-
+        ,EAC.RecordUUID,EAC.voided
 FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
-    INNER JOIN [DWAPICentral].[dbo].[EnhancedAdherenceCounsellingExtract](NoLock) EAC ON EAC.[PatientId] = P.ID AND EAC.Voided = 0
+    INNER JOIN [DWAPICentral].[dbo].[EnhancedAdherenceCounsellingExtract](NoLock) EAC ON EAC.[PatientId] = P.ID
     INNER JOIN [DWAPICentral].[dbo].[Facility](NoLock) F ON P.[FacilityId] = F.Id AND F.Voided = 0
-WHERE P.gender != 'Unknown'
+WHERE P.gender != 'Unknown' AND F.code >0

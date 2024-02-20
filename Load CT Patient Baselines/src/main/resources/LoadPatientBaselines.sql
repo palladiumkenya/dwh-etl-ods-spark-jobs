@@ -7,12 +7,19 @@ SELECT  Distinct P.[PatientCccNumber] AS PatientID,P.[PatientPID] AS PatientPK,F
                     WHEN 'HMIS' THEN 'Kenya HMIS II'
                     ELSE P.[Project]
     END AS [Project]
-			  ,PB.[Voided],PB.[Processed],PB.[bWAB],PB.[bWABDate],PB.[eWAB],PB.[eWABDate],PB.[lastWAB]
+			  ,PB.[Processed],PB.[bWAB],PB.[bWABDate],PB.[eWAB],PB.[eWABDate],PB.[lastWAB]
 			  ,PB.[lastWABDate],PB.[Date_Created],PB.[Date_Last_Modified]
-
+			  ,PB.RecordUUID,PB.voided
 
 FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
-    --INNER JOIN [DWAPICentral].[dbo].[PatientArtExtract](NoLock) PA ON PA.[PatientId]= P.ID ---- This table is not been used in this contest analysis done by Mugo and Mumo. It is causing duplicates
-    INNER JOIN [DWAPICentral].[dbo].[PatientBaselinesExtract](NoLock) PB ON PB.[PatientId]= P.ID AND PB.Voided=0
+    INNER JOIN [DWAPICentral].[dbo].[PatientBaselinesExtract](NoLock) PB ON PB.[PatientId]= P.ID
     INNER JOIN [DWAPICentral].[dbo].[Facility](NoLock) F ON P.[FacilityId] = F.Id AND F.Voided=0
-WHERE p.gender!='Unknown'
+    INNER JOIN (
+    SELECT F.code as SiteCode,p.[PatientPID] as PatientPK,InnerPB.voided, MAX(InnerPB.created) AS Maxdatecreated
+    FROM [DWAPICentral].[dbo].[PatientExtract] P WITH (NoLock)
+    INNER JOIN [DWAPICentral].[dbo].[PatientBaselinesExtract] InnerPB  WITH(NoLock)  ON InnerPB.[PatientId]= P.ID
+    INNER JOIN [DWAPICentral].[dbo].[Facility] F WITH(NoLock)  ON P.[FacilityId] = F.Id AND F.Voided=0
+    GROUP BY F.code,p.[PatientPID],InnerPB.voided
+    ) tm
+    ON f.code = tm.[SiteCode] and p.PatientPID=tm.PatientPK and PB.voided=tm.PatientPK and  PB.created = tm.Maxdatecreated
+WHERE p.gender!='Unknown' AND F.code >0

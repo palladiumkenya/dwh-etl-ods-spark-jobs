@@ -1,22 +1,35 @@
-SELECT Distinct
-    P.[PatientCccNumber] AS PatientID,
-    P.[PatientPID] AS PatientPK,
-    F.Name AS FacilityName,
-    F.Code AS SiteCode,
-    [AdverseEvent], [AdverseEventStartDate], [AdverseEventEndDate],
-    CASE [Severity]
+SELECT DISTINCT P.[patientcccnumber] AS PatientID,
+                P.[patientpid]       AS PatientPK,
+                F.NAME               AS FacilityName,
+                F.code               AS SiteCode,
+    [adverseevent],
+    [adverseeventstartdate],
+    [adverseeventenddate],
+    CASE [severity]
     WHEN '1' THEN 'Mild'
     WHEN '2' THEN 'Moderate'
     WHEN '3' THEN 'Severe'
-    ELSE [Severity]
-END AS [Severity] ,
-							[VisitDate],
-							PA.[EMR], PA.[Project], [AdverseEventCause], [AdverseEventRegimen],
-							[AdverseEventActionTaken],[AdverseEventClinicalOutcome], [AdverseEventIsPregnant]
-							,PA.ID
-							,PA.[Date_Created]
-						  ,PA.[Date_Last_Modified]
-
-					FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
-					INNER JOIN [DWAPICentral].[dbo].PatientAdverseEventExtract(NoLock) PA ON PA.[PatientId]= P.ID AND PA.Voided=0
-					INNER JOIN [DWAPICentral].[dbo].[Facility](NoLock) F ON P.[FacilityId] = F.Id AND F.Voided=0
+    ELSE [severity]
+END                  AS [Severity],
+                          [visitdate],
+                          PA.[emr],
+                          PA.[project],
+                          [adverseeventcause],
+                          [adverseeventregimen],
+                          [adverseeventactiontaken],
+                          [adverseeventclinicaloutcome],
+                          [adverseeventispregnant],
+                          PA.id,
+                          PA.[date_created],
+                          PA.[date_last_modified],
+                          PA.recorduuid,
+                          PA.voided
+          FROM   [DWAPICentral].[dbo].[patientextract](nolock) P
+                 INNER JOIN
+                 [DWAPICentral].[dbo].patientadverseeventextract(nolock)
+                 PA
+                         ON PA.[patientid] = P.id
+                 INNER JOIN [DWAPICentral].[dbo].[facility](nolock) F
+                         ON P.[facilityid] = F.id
+                            AND F.voided = 0
+                            AND F.code > 0

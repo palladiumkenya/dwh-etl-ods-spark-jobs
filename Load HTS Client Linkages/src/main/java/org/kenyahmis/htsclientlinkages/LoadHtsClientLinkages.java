@@ -26,7 +26,6 @@ public class LoadHtsClientLinkages {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load HTS Client Linkages");
-        conf.setMaster("local[*]");
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();

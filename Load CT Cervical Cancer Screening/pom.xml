@@ -62,7 +62,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.kenyahmis.loadcervicalscreening.LoadCervicalScreening</mainClass>
+                            <mainClass>org.kenyahmis.loadcancerscreening.LoadCancerScreening</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

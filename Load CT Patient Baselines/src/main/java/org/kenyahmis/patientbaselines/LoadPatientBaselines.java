@@ -64,6 +64,7 @@ public class LoadPatientBaselines {
                         .otherwise(col("bCD4Date")));
 
         sourceDf.persist(StorageLevel.DISK_ONLY());
+        sourceDf.printSchema();
 
         logger.info("Loading target patient baselines");
         Dataset<Row> targetDf = session.read()
@@ -77,6 +78,7 @@ public class LoadPatientBaselines {
                 .load();
 
         targetDf.persist(StorageLevel.DISK_ONLY());
+        targetDf.printSchema();
 
         sourceDf.createOrReplaceTempView("source_patient_baselines");
         targetDf.createOrReplaceTempView("target_patient_baselines");

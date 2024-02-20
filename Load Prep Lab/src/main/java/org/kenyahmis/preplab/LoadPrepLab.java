@@ -25,6 +25,7 @@ public class LoadPrepLab {
     public static void main(String[] args) {
         SparkConf conf = new SparkConf();
         conf.setAppName("Load PrEP Lab");
+
         SparkSession session = SparkSession.builder()
                 .config(conf)
                 .getOrCreate();
