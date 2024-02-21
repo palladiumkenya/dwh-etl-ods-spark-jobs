@@ -102,7 +102,7 @@ public class LoadCTIPT {
         final String sourceColumnList = "ID,PatientID,PatientPK,SiteCode,FacilityName,VisitID,VisitDate,Emr,Project," +
                 "OnTBDrugs,OnIPT,EverOnIPT,Cough,Fever,NoticeableWeightLoss,NightSweats,Lethargy,ICFActionTaken," +
                 "TestResult,TBClinicalDiagnosis,ContactsInvited,EvaluatedForIPT,StartAntiTBs,TBRxStartDate,TBScreening," +
-                "IPTClientWorkUp,StartIPT,IndicationForIPT,Date_Created,Date_Last_Modified";
+                "IPTClientWorkUp,StartIPT,IndicationForIPT,Date_Created,Date_Last_Modified,recorduuid,voided";
 
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
         newRecordsJoinDf

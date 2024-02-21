@@ -152,7 +152,7 @@ public class LoadHtsClientTests {
         String columnList = "FacilityName,SiteCode,PatientPk,Emr,Project,EncounterId,TestDate,EverTestedForHiv," +
                 "MonthsSinceLastTest,ClientTestedAs,EntryPoint,TestStrategy,TestResult1,TestResult2,FinalTestResult," +
                 "PatientGivenResult,TbScreening,ClientSelfTested,CoupleDiscordant,TestType,Consent,Setting,Approach," +
-                "HtsRiskCategory,HtsRiskScore,OtherReferredServices,ReferredForServices,ReferredServices";
+                "HtsRiskCategory,HtsRiskScore,OtherReferredServices,ReferredForServices,ReferredServices,RecordUUID";
 
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
         newRecordsJoinDf.printSchema();

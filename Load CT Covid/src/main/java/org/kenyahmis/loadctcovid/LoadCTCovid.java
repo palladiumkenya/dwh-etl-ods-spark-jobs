@@ -112,7 +112,7 @@ public class LoadCTCovid {
                 "MissedAppointmentDueToCOVID19,COVID19PositiveSinceLasVisit,COVID19TestDateSinceLastVisit," +
                 "PatientStatusSinceLastVisit,AdmissionStatusSinceLastVisit,AdmissionStartDate,AdmissionEndDate," +
                 "AdmissionUnitSinceLastVisit,SupplementalOxygenReceived,PatientVentilated,TracingFinalOutcome," +
-                "CauseOfDeath,BoosterDoseVerified,Sequence,COVID19TestResult,Date_Created,Date_Last_Modified";
+                "CauseOfDeath,BoosterDoseVerified,Sequence,COVID19TestResult,Date_Created,Date_Last_Modified,recorduuid,voided";
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
 
         newRecordsJoinDf

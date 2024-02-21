@@ -83,7 +83,7 @@ public class LoadHtsClientTracing {
         logger.info("New record count is: " + newRecordsCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
-        String columnList = "FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TracingType,TracingDate,TracingOutcome";
+        String columnList = "FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TracingType,TracingDate,TracingOutcome,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

@@ -74,7 +74,7 @@ public class LoadMNCHImmunization {
                 "FacilityName,PatientMnchID,BCG,OPVatBirth,OPV1,OPV2,OPV3,IPV,DPTHepBHIB1,DPTHepBHIB2,DPTHepBHIB3," +
                 "PCV101,PCV102,PCV103,ROTA1,MeaslesReubella1,YellowFever,MeaslesReubella2,MeaslesAt6Months,ROTA2," +
                 "DateOfNextVisit,BCGScarChecked,DateChecked,DateBCGrepeated,VitaminAAt6Months,VitaminAAt1Yr," +
-                "VitaminAAt18Months,VitaminAAt2Years,VitaminAAt2To5Years,FullyImmunizedChild";
+                "VitaminAAt18Months,VitaminAAt2Years,VitaminAAt2To5Years,FullyImmunizedChild,RecordUUID";
 
         newRecordsJoinDf.createOrReplaceTempView("new_records");
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", sourceColumnList));

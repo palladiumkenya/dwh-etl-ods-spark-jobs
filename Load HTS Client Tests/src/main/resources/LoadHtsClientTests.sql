@@ -34,14 +34,14 @@ SELECT distinct
               ,[OtherReferredServices]
               ,[ReferredForServices]
               ,[ReferredServices]
-
+              ,a.RecordUUID
 FROM [HTSCentral].[dbo].[HtsClientTests](NoLock) a
     LEFT JOIN ods.dbo.lkp_patient_source mm
 on a.entryPoint =mm.source_name
     LEFT JOIN ods.dbo.lkp_htsStrategy mp
     on a.TestStrategy = mp.Source_htsStrategy
     INNER JOIN ( select  ct.sitecode,ct.patientPK,ct.FinalTestResult,ct.TestDate,ct.EncounterId
-    ,max(cast(DateExtracted as date))MaxDateExtracted
+    ,max(ID) As MaxID,max(cast(DateExtracted as date))MaxDateExtracted
     from [HTSCentral].[dbo].[HtsClientTests] ct
     LEFT JOIN ods.dbo.lkp_patient_source mn
     on ct.entryPoint = mn.source_name
@@ -56,6 +56,7 @@ on a.entryPoint =mm.source_name
     and a.FinalTestResult = tn.FinalTestResult
     and a.TestDate = tn.TestDate
     and coalesce(a.EncounterId,-1) = coalesce(tn.EncounterId,-1)
+    and a.ID  = tn.MaxID
     INNER JOIN  [HTSCentral].[dbo].Clients(NoLock) c
     ON a.[SiteCode] = c.[SiteCode] and a.PatientPK=c.PatientPK
 

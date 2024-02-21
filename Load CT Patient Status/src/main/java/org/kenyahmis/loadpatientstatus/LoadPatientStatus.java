@@ -101,7 +101,7 @@ public class LoadPatientStatus {
 
         final String sourceColumns = "PatientID,SiteCode,FacilityName,ExitDescription,ExitDate,ExitReason,PatientPK," +
                 "Emr,Project,TOVerified,TOVerifiedDate,ReEnrollmentDate,DeathDate,EffectiveDiscontinuationDate," +
-                "ReasonForDeath,SpecificDeathReason,Date_Created,Date_Last_Modified";
+                "ReasonForDeath,SpecificDeathReason,Date_Created,Date_Last_Modified,recorduuid,voided";
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumns));
 
         newRecordsJoinDf

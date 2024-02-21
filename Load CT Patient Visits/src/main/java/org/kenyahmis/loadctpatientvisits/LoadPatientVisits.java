@@ -153,7 +153,7 @@ public class LoadPatientVisits {
                 "StabilityAssessment,KeyPopulationType,PopulationType,VisitBy,Temp,PulseRate,RespiratoryRate," +
                 "OxygenSaturation,Muac,NutritionalStatus,EverHadMenses,Breastfeeding,Menopausal,NoFPReason," +
                 "ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes,ZScore," +
-                "ZScoreAbsolute,RefillDate,PaedsDisclosure,Date_Created,Date_Last_Modified";
+                "ZScoreAbsolute,RefillDate,PaedsDisclosure,Date_Created,Date_Last_Modified,recorduuid,voided";
 
         unmatchedFromJoinDf = session.sql(String.format("select %s from final_unmatched", columnList));
         Dataset<Row> sourceMergeDf = session.sql(String.format("select %s from source_visits", columnList));

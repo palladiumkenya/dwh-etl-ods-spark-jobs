@@ -150,7 +150,8 @@ public class LoadAdverseEvents {
 
         final String sourceColumnList = "PatientID,Patientpk,SiteCode,AdverseEvent,AdverseEventStartDate," +
                 "AdverseEventEndDate,Severity,VisitDate,EMR,Project,AdverseEventCause,AdverseEventRegimen," +
-                "AdverseEventActionTaken,AdverseEventClinicalOutcome,AdverseEventIsPregnant,Date_Created,Date_Last_Modified";
+                "AdverseEventActionTaken,AdverseEventClinicalOutcome,AdverseEventIsPregnant,Date_Created," +
+                "Date_Last_Modified,recorduuid,voided,current_timestamp() as LoadDate";
 
         newRecordsJoinDf.createOrReplaceTempView("new_records");
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", sourceColumnList));

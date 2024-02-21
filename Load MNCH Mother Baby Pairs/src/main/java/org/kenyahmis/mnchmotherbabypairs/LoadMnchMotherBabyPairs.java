@@ -82,7 +82,7 @@ public class LoadMnchMotherBabyPairs {
 
 
         final String columnList = "PatientIDCCC,PatientPk,BabyPatientPK,MotherPatientPK,BabyPatientMncHeiID," +
-                "MotherPatientMncHeiID,SiteCode,FacilityName,EMR,Project,Date_Last_Modified";
+                "MotherPatientMncHeiID,SiteCode,FacilityName,EMR,Project,Date_Last_Modified,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

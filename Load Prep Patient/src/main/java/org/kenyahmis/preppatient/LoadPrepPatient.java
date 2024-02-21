@@ -145,7 +145,7 @@ public class LoadPrepPatient {
                 "DateofBirth,CountyofBirth,County,SubCounty,Location,LandMark,Ward,ClientType,ReferralPoint," +
                 "MaritalStatus,Inschool,PopulationType,KeyPopulationType,Refferedfrom,TransferIn,TransferInDate," +
                 "TransferFromFacility,DatefirstinitiatedinPrepCare,DateStartedPrEPattransferringfacility," +
-                "ClientPreviouslyonPrep,PrevPrepReg,DateLastUsedPrev,Date_Created,Date_Last_Modified";
+                "ClientPreviouslyonPrep,PrevPrepReg,DateLastUsedPrev,Date_Created,Date_Last_Modified,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

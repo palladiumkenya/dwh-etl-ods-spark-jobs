@@ -86,7 +86,7 @@ public class LoadHtsPartnerTracing {
 
 
         String columnList = "FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,TraceType,TraceDate,TraceOutcome," +
-                "BookingDate";
+                "BookingDate,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

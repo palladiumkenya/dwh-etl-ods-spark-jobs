@@ -16,21 +16,23 @@ SELECT DISTINCT  a.ID,a.[FacilityName],a.[SiteCode],a.[PatientPk],a.[HtsNumber],
               ,ReasonRefferredForTesting
               ,ReasonNotReffered
               ,[HtsRiskScore]
-
+              ,a.RecordUUID
 FROM [HTSCentral].[dbo].[HtsEligibilityExtract] (NoLock)a
-    Inner join ( select ct.sitecode,ct.patientPK,ct.encounterID,ct.visitID,max(DateCreated)MaxDateCreated  from [HTSCentral].[dbo].[HtsEligibilityExtract] ct
+    Inner join ( select ct.sitecode,ct.patientPK,ct.encounterID,ct.visitID,max(ID)As MaxID,max(DateCreated)MaxDateCreated  from [HTSCentral].[dbo].[HtsEligibilityExtract] ct
     group by ct.sitecode,ct.patientPK,ct.encounterID,ct.visitID)tn
 on a.sitecode = tn.sitecode and a.patientPK = tn.patientPK
     and a.DateCreated = tn.MaxDateCreated
     and a.encounterID = tn.encounterID
     and a.visitID = tn.visitID
+    and a.ID = tn.MaxID
 
-    Inner join ( select ct1.sitecode,ct1.patientPK,ct1.encounterID,ct1.visitID,max(cast(ct1.DateExtracted as date))MaxDateExtracted  from [HTSCentral].[dbo].[HtsEligibilityExtract] ct1
+    Inner join ( select ct1.sitecode,ct1.patientPK,ct1.encounterID,ct1.visitID,Max(ID)As MaxID,max(cast(ct1.DateExtracted as date))MaxDateExtracted  from [HTSCentral].[dbo].[HtsEligibilityExtract] ct1
     group by ct1.sitecode,ct1.patientPK,ct1.encounterID,ct1.visitID)tn1
     on a.sitecode = tn1.sitecode and a.patientPK = tn1.patientPK
     and cast(a.DateExtracted as date) = tn1.MaxDateExtracted
     and a.encounterID = tn1.encounterID
     and a.visitID = tn1.visitID
+    and a.ID  = tn1.MaxID
 
     INNER JOIN [HTSCentral].[dbo].Clients (NoLock) Cl
     on a.PatientPk = Cl.PatientPk and a.SiteCode = Cl.SiteCode

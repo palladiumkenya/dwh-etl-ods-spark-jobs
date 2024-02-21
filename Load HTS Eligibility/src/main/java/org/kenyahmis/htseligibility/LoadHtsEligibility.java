@@ -136,7 +136,7 @@ public class LoadHtsEligibility {
                 "ReasonsForIneligibility,SpecificReasonForIneligibility,Cough,DateTestedProvider,Fever,MothersStatus," +
                 "NightSweats,ReferredForTesting,ResultOfHIVSelf,ScreenedTB,TBStatus,WeightLoss,AssessmentOutcome," +
                 "ForcedSex,ReceivedServices,TypeGBV,Disability,DisabilityType,HTSStrategy,HTSEntryPoint,HIVRiskCategory," +
-                "ReasonRefferredForTesting,ReasonNotReffered,HtsRiskScore";
+                "ReasonRefferredForTesting,ReasonNotReffered,HtsRiskScore,RecordUUID";
 
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 

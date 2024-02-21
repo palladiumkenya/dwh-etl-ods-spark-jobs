@@ -87,7 +87,7 @@ public class LoadMnchCwcEnrolments {
                 "MothersPkv,RegistrationAtCWC,RegistrationAtHEI,VisitID,Gestation,BirthWeight,BirthLength,BirthOrder," +
                 "BirthType,PlaceOfDelivery,ModeOfDelivery,SpecialNeeds,SpecialCare,HEI,MotherAlive,MothersCCCNo," +
                 "TransferIn,TransferInDate,TransferredFrom,HEIDate,NVP,BreastFeeding,ReferredFrom,ARTMother," +
-                "ARTRegimenMother,ARTStartDateMother,Date_Created,Date_Last_Modified";
+                "ARTRegimenMother,ARTStartDateMother,Date_Created,Date_Last_Modified,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

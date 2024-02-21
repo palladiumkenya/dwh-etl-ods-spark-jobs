@@ -93,7 +93,7 @@ public class LoadCancerScreening {
                 " TreatmentPapSmear, ReferalOrdered, Colposcopy, TreatmentColposcopy, BiopsyCINIIandAbove," +
                 " BiopsyCINIIandBelow, BiopsyNotAvailable, CBE, TreatmentCBE, Ultrasound, TreatmentUltraSound," +
                 " IfTissueDiagnosis, DateTissueDiagnosis, ReasonNotDone, FollowUpDate, Referred, ReasonForReferral," +
-                " RecordUUID, Date_Created, Date_Last_Modified, Created, current_date() as LoadDate";
+                " RecordUUID, Date_Created, Date_Last_Modified, Created,recorduuid,voided, current_date() as LoadDate";
 
         newRecordsJoinDf.createOrReplaceTempView("new_records");
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", sourceColumnList));

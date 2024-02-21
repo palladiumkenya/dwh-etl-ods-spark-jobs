@@ -7,6 +7,7 @@ SELECT DISTINCT  a.[FacilityName]
               ,[TracingType]
               ,[TracingDate]
               ,[TracingOutcome]
+              ,a.RecordUUID
 FROM [HTSCentral].[dbo].[HtsClientTracing] (NoLock)a
     INNER JOIN [HTSCentral].[dbo].Clients (NoLock) Cl
 on a.PatientPk = Cl.PatientPk and a.SiteCode = Cl.SiteCode

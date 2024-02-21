@@ -153,7 +153,7 @@ public class LoadPatientPharmacy {
         final String sourceColumnList = "ID,PatientID,SiteCode,FacilityName,PatientPK,VisitID,Drug,DispenseDate," +
                 "Duration,ExpectedReturn,TreatmentType,PeriodTaken,ProphylaxisType,Emr,Project,RegimenLine," +
                 "RegimenChangedSwitched,RegimenChangeSwitchReason,StopRegimenReason,StopRegimenDate," +
-                "Date_Created,Date_Last_Modified";
+                "Date_Created,Date_Last_Modified,recorduuid,voided";
 
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
 

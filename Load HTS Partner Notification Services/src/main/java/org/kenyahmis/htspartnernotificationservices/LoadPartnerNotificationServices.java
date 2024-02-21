@@ -103,7 +103,7 @@ public class LoadPartnerNotificationServices {
         String sourceColumnList = "ID,FacilityName,SiteCode,PatientPk,HtsNumber,Emr,Project,PartnerPatientPk," +
                 "KnowledgeOfHivStatus,PartnerPersonID,CccNumber,IpvScreeningOutcome,ScreenedForIpv,PnsConsent," +
                 "RelationsipToIndexClient,LinkedToCare,MaritalStatus,PnsApproach,FacilityLinkedTo,Gender," +
-                "CurrentlyLivingWithIndexClient,Age,DateElicited,Dob,LinkDateLinkedToCare";
+                "CurrentlyLivingWithIndexClient,Age,DateElicited,Dob,LinkDateLinkedToCare,RecordUUID";
 
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", sourceColumnList));
 

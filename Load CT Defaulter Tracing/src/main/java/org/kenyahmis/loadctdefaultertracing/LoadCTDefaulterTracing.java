@@ -91,7 +91,7 @@ public class LoadCTDefaulterTracing {
 
         final String sourceColumnList = "ID,PatientPK,PatientID,Emr,Project,SiteCode,FacilityName,VisitID,VisitDate," +
                 "EncounterId,TracingType,TracingOutcome,AttemptNumber,IsFinalTrace,TrueStatus,CauseOfDeath,Comments," +
-                "BookingDate,Date_Created,Date_Last_Modified";
+                "BookingDate,Date_Created,Date_Last_Modified,recorduuid,voided";
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
 
         newRecordsJoinDf

@@ -84,7 +84,7 @@ public class LoadCTGBVScreening {
         logger.info("New record count is: " + newRecordCount);
         newRecordsJoinDf.createOrReplaceTempView("new_records");
         final String sourceColumnList = "ID,PatientID,PatientPK,SiteCode,FacilityName,VisitID,VisitDate," +
-                "Emr,Project,IPV,PhysicalIPV,EmotionalIPV,SexualIPV,IPVRelationship,Date_Created,Date_Last_Modified";
+                "Emr,Project,IPV,PhysicalIPV,EmotionalIPV,SexualIPV,IPVRelationship,Date_Created,Date_Last_Modified,recorduuid,voided";
 
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
         newRecordsJoinDf

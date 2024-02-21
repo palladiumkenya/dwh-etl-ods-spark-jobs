@@ -105,7 +105,7 @@ public class LoadEnhancedAdherenceCounselling {
                 "EACEconBarrier_1,EACEconBarrier_2,EACEconBarrier_3,EACEconBarrier_4,EACEconBarrier_5,EACEconBarrier_6," +
                 "EACEconBarrier_7,EACEconBarrier_8,EACReviewImprovement,EACReviewMissedDoses,EACReviewStrategy," +
                 "EACReferral,EACReferralApp,EACReferralExperience,EACHomevisit,EACAdherencePlan,EACFollowupDate," +
-                "Date_Created,Date_Last_Modified";
+                "Date_Created,Date_Last_Modified,recorduuid,voided";
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
 
         // Write to target table

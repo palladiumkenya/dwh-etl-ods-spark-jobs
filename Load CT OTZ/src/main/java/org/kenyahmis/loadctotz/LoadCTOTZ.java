@@ -102,7 +102,7 @@ public class LoadCTOTZ {
 
         final String sourceColumnList = "ID,PatientID,PatientPK,SiteCode,FacilityName,VisitID,VisitDate,Emr,Project," +
                 "OTZEnrollmentDate,TransferInStatus,ModulesPreviouslyCovered,ModulesCompletedToday,SupportGroupInvolvement," +
-                "Remarks,TransitionAttritionReason,OutcomeDate,Date_Created,Date_Last_Modified";
+                "Remarks,TransitionAttritionReason,OutcomeDate,Date_Created,Date_Last_Modified,recorduuid,voided";
 
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
         newRecordsJoinDf

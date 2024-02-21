@@ -87,7 +87,7 @@ public class LoadPrepCareTermination {
 
         final String columnList = "ID,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status," +
                 "StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber," +
-                "ExitDate,ExitReason,DateOfLastPrepDose,Date_Created,Date_Last_Modified";
+                "ExitDate,ExitReason,DateOfLastPrepDose,Date_Created,Date_Last_Modified,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

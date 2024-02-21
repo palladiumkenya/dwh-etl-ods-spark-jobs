@@ -115,7 +115,7 @@ public class LoadPrepBehaviourRisk {
                 "PartnerARTRisk,ClientAssessments,ClientRisk,ClientWillingToTakePrep,PrEPDeclineReason," +
                 "RiskReductionEducationOffered,ReferralToOtherPrevServices,FirstEstablishPartnerStatus," +
                 "PartnerEnrolledtoCCC,HIVPartnerCCCnumber,HIVPartnerARTStartDate,MonthsknownHIVSerodiscordant," +
-                "SexWithoutCondom,NumberofchildrenWithPartner,Date_Created,Date_Last_Modified";
+                "SexWithoutCondom,NumberofchildrenWithPartner,Date_Created,Date_Last_Modified,RecordUUID";
 
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 

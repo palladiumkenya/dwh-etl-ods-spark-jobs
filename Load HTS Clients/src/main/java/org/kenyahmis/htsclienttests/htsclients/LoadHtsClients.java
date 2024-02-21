@@ -130,7 +130,7 @@ public class LoadHtsClients {
 
         String columnList = "HtsNumber,Emr,Project,PatientPk,SiteCode,FacilityName,Dob,Gender,MaritalStatus," +
                 "KeyPopulationType,DisabilityType,PatientDisabled,County,SubCounty,Ward,NUPI," +
-                "HtsRecencyId,Occupation,PriorityPopulationType,pkv";
+                "HtsRecencyId,Occupation,PriorityPopulationType,pkv,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

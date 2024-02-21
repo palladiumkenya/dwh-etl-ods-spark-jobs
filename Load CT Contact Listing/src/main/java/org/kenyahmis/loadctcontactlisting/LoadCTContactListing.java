@@ -115,7 +115,7 @@ public class LoadCTContactListing {
         final String columnList = "ID,PatientID,PatientPK,SiteCode,FacilityName,Emr,Project,PartnerPersonID,ContactAge," +
                 "ContactSex,ContactMaritalStatus,RelationshipWithPatient,ScreenedForIpv,IpvScreening," +
                 "IPVScreeningOutcome,CurrentlyLivingWithIndexClient,KnowledgeOfHivStatus," +
-                "PnsApproach,ContactPatientPK,DateCreated,Date_Created,Date_Last_Modified";
+                "PnsApproach,ContactPatientPK,DateCreated,Date_Created,Date_Last_Modified,recorduuid,voided";
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", columnList));
 
         newRecordsJoinDf

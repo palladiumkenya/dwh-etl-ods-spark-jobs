@@ -14,16 +14,17 @@ SELECT 	DISTINCT a.[FacilityName]
 							  ,[HandedOverToCadre]
 							  ,[ReportedCCCNumber]
 							  ,CASE WHEN CAST([ReportedStartARTDate] AS DATE) = '0001-01-01' THEN NULL ELSE CAST([ReportedStartARTDate] AS DATE) END AS [ReportedStartARTDate]
-
-						FROM [HTSCentral].[dbo].[ClientLinkages](NoLock) a--
+							,a.RecordUUID
+						FROM [HTSCentral].[dbo].[ClientLinkages](NoLock) a
 						INNER JOIN (
-								SELECT distinct SiteCode,PatientPK, MAX(cast(DateExtracted as date)) AS MaxDateExtracted
+								SELECT distinct SiteCode,PatientPK,Max(ID) As MaxID, MAX(cast(DateExtracted as date)) AS MaxDateExtracted
 								FROM  [HTSCentral].[dbo].[ClientLinkages](NoLock)
 								GROUP BY SiteCode,PatientPK
 							) tm
 				     ON a.[SiteCode] = tm.[SiteCode] and
 					 	a.PatientPK=tm.PatientPK and
 						cast(a.DateExtracted as date) = tm.MaxDateExtracted
+						and a.ID = tm.MaxID
 						INNER JOIN [HTSCentral].[dbo].Clients (NoLock) Cl
 						on a.PatientPk = Cl.PatientPk and a.SiteCode = Cl.SiteCode
 						WHERE a.DateExtracted > '2019-09-08'
@@ -41,3 +42,4 @@ SELECT 	DISTINCT a.[FacilityName]
 							,a.DateExtracted
 							,[ReportedCCCNumber]
 							,CAST([ReportedStartARTDate] AS DATE)
+							,a.RecordUUID

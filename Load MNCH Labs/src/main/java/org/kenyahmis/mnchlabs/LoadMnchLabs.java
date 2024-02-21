@@ -82,7 +82,7 @@ public class LoadMnchLabs {
 
         final String columnList = "PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status,StatusDate,PatientMNCH_ID," +
                 "FacilityName,SatelliteName,VisitID,OrderedbyDate,ReportedbyDate,TestName," +
-                "TestResult,LabReason,Date_Last_Modified";
+                "TestResult,LabReason,Date_Last_Modified,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

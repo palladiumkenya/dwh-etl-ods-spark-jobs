@@ -71,5 +71,8 @@ CREATE TABLE [dbo].[CT_PatientVisits](
     [RefillDate] [datetime2](7) NULL,
     [PaedsDisclosure] [nvarchar](150) NULL,
     [Date_Last_Modified] [datetime2](7) NULL,
-    [Date_Created] [datetime2](7) NULL
+    [Date_Created] [datetime2](7) NULL,
+    [LoadDate] [datetime] NULL,
+    [RecordUUID] [nvarchar](150) NULL,
+    [voided] [bit] NULL
     ) ON [PRIMARY]

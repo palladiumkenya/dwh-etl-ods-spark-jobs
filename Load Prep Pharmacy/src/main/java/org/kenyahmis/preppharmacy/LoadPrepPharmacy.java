@@ -93,7 +93,7 @@ public class LoadPrepPharmacy {
 
         final String columnList = "ID,RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status," +
                 "StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber," +
-                "VisitID,RegimenPrescribed,DispenseDate,Duration,Date_Created,Date_Last_Modified";
+                "VisitID,RegimenPrescribed,DispenseDate,Duration,Date_Created,Date_Last_Modified,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

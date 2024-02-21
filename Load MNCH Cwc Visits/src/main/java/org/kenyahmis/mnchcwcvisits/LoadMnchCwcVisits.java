@@ -82,7 +82,7 @@ public class LoadMnchCwcVisits {
                 "VisitDate,VisitID,Height,Weight,Temp,PulseRate,RespiratoryRate,OxygenSaturation,MUAC,WeightCategory," +
                 "Stunted,InfantFeeding,MedicationGiven,TBAssessment,MNPsSupplementation,Immunization,DangerSigns," +
                 "Milestones,VitaminA,Disability,ReceivedMosquitoNet,Dewormed,ReferredFrom,ReferredTo,ReferralReasons," +
-                "FollowUP,NextAppointment,Date_Last_Modified,ZScore,ZScoreAbsolute,HeightLength,Refferred,RevisitThisYear";
+                "FollowUP,NextAppointment,Date_Last_Modified,ZScore,ZScoreAbsolute,HeightLength,Refferred,RevisitThisYear,RecordUUID";
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
         newRecordsJoinDf

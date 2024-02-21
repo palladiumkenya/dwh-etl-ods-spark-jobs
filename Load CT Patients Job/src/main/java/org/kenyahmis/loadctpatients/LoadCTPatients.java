@@ -197,7 +197,7 @@ public class LoadCTPatients {
                 "PreviousARTExposure,PreviousARTStartDate,Emr,Project,Orphan,Inschool,PatientType,PopulationType," +
                 "KeyPopulationType,PatientResidentCounty,PatientResidentSubCounty,PatientResidentLocation," +
                 "PatientResidentSubLocation,PatientResidentWard,PatientResidentVillage,TransferInDate,Occupation," +
-                "NUPI,Pkv,Date_Created,Date_Last_Modified";
+                "NUPI,Pkv,Date_Created,Date_Last_Modified,recorduuid,voided";
 
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
 

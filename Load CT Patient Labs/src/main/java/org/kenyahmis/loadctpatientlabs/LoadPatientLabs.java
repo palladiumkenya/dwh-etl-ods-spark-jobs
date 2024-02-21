@@ -120,7 +120,7 @@ public class LoadPatientLabs {
         newRecordsJoinDf.createOrReplaceTempView("new_records");
 
         final String columnList = "ID,PatientID,PatientPk,SiteCode,FacilityName,VisitID,OrderedbyDate,ReportedbyDate," +
-                "TestName,EnrollmentTest,TestResult,Emr,Project,DateSampleTaken,SampleType,reason,Date_Created,Date_Last_Modified";
+                "TestName,EnrollmentTest,TestResult,Emr,Project,DateSampleTaken,SampleType,reason,Date_Created,Date_Last_Modified,recorduuid,voided";
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", columnList));
 
         newRecordsJoinDf

@@ -90,7 +90,7 @@ public class LoadPrepLab {
         final String columnList = "RefId,Created,PatientPk,SiteCode,Emr,Project,Processed,QueueId,Status," +
                 "StatusDate,DateExtracted,FacilityId,FacilityName,PrepNumber,HtsNumber," +
                 "VisitID,TestName,TestResult,SampleDate,TestResultDate,Reason," +
-                "Date_Created,Date_Last_Modified";
+                "Date_Created,Date_Last_Modified,RecordUUID";
 
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 

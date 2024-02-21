@@ -89,7 +89,7 @@ public class LoadCTOVC {
 
         final String sourceColumnList = "ID,PatientID,PatientPK,SiteCode,FacilityName,VisitID,VisitDate,Emr,Project," +
                 "OVCEnrollmentDate,RelationshipToClient,EnrolledinCPIMS,CPIMSUniqueIdentifier,PartnerOfferingOVCServices," +
-                "OVCExitReason,ExitDate,Date_Created,Date_Last_Modified";
+                "OVCExitReason,ExitDate,Date_Created,Date_Last_Modified,recorduuid,voided";
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records",sourceColumnList));
 
         newRecordsJoinDf

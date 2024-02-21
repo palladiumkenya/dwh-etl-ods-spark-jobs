@@ -85,7 +85,7 @@ public class LoadMnchPatients {
         final String columnList = "PatientPk,SiteCode,Emr,Project,DateExtracted,FacilityName,Pkv,PatientMnchID," +
                 "PatientHeiID,Gender,DOB,FirstEnrollmentAtMnch,Occupation,MaritalStatus,EducationLevel," +
                 "PatientResidentCounty,PatientResidentSubCounty,PatientResidentWard,InSchool," +
-                "Date_Created,Date_Last_Modified,NUPI";
+                "Date_Created,Date_Last_Modified,NUPI,RecordUUID";
 
         newRecordsJoinDf = session.sql(String.format("select %s from new_records",columnList));
 

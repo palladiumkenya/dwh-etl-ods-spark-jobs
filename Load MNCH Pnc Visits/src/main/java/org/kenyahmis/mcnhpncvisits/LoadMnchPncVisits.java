@@ -87,7 +87,7 @@ public class LoadMnchPncVisits {
                 "CoupleCounselled,PartnerHIVTestingPNC,PartnerHIVResultPNC,CounselledOnFP,ReceivedFP,HaematinicsGiven," +
                 "DeliveryOutcome,BabyConditon,BabyFeeding,UmbilicalCord,Immunization,InfantFeeding,PreventiveServices," +
                 "ReferredFrom,ReferredTo,NextAppointmentPNC,ClinicalNotes,Date_Last_Modified,InfactCameForHAART," +
-                "MotherCameForHIVTest,MotherGivenHAART,VisitTimingBaby,VisitTimingMother";
+                "MotherCameForHIVTest,MotherGivenHAART,VisitTimingBaby,VisitTimingMother,RecordUUID";
 
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 

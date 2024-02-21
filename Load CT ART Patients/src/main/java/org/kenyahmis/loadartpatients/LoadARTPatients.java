@@ -188,7 +188,7 @@ public class LoadARTPatients {
                 "RegistrationDate,PatientSource,Gender,StartARTDate,PreviousARTStartDate,PreviousARTRegimen," +
                 "StartARTAtThisFacility,StartRegimen,StartRegimenLine,LastARTDate,LastRegimen," +
                 "LastRegimenLine,Duration,ExpectedReturn,Provider,LastVisit,ExitReason,ExitDate,Emr,Project," +
-                "DOB,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf,Date_Created,Date_Last_Modified";
+                "DOB,PreviousARTUse,PreviousARTPurpose,DateLastUsed,DateAsOf,Date_Created,Date_Last_Modified,recorduuid,voided";
 
         newRecordsJoinDf = session.sql(String.format("SELECT %s FROM new_records", sourceColumnList));
 

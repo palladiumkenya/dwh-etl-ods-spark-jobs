@@ -85,7 +85,7 @@ public class LoadMnchMatVisits {
                 "MotherDischargeDate,SyphilisTestResults,HIVStatusLastANC,HIVTestingDone,HIVTest1,HIV1Results,HIVTest2," +
                 "HIV2Results,HIVTestFinalResult,OnARTANC,BabyGivenProphylaxis,MotherGivenCTX,PartnerHIVTestingMAT," +
                 "PartnerHIVStatusMAT,CounselledOn,ReferredFrom,ReferredTo,ClinicalNotes,EDD,LMP," +
-                "MaternalDeathAudited,OnARTMat,ReferralReason";
+                "MaternalDeathAudited,OnARTMat,ReferralReason,RecordUUID";
 
         newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
         newRecordsJoinDf
