@@ -60,6 +60,8 @@
         <module>Load CT Cervical Cancer Screening</module>
         <module>Load MNCH Immunization</module>
         <module>Load CT Cancer Screening</module>
+        <module>Load CT Facility Manifest</module>
+        <module>Load CT IIT RiskScores</module>
     </modules>
 
     <dependencyManagement>
