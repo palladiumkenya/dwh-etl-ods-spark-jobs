@@ -21,5 +21,5 @@ FROM [DWAPICentral].[dbo].[PatientExtract](NoLock) P
     INNER JOIN [DWAPICentral].[dbo].[Facility] F WITH(NoLock)  ON P.[FacilityId] = F.Id AND F.Voided=0
     GROUP BY F.code,p.[PatientPID],InnerPB.voided
     ) tm
-    ON f.code = tm.[SiteCode] and p.PatientPID=tm.PatientPK and PB.voided=tm.PatientPK and  PB.created = tm.Maxdatecreated
-WHERE p.gender!='Unknown' AND F.code >0
+    ON f.code = tm.[SiteCode] and p.PatientPID=tm.PatientPK and PB.voided=tm.voided and  PB.created = tm.Maxdatecreated
+WHERE p.gender!='Unknown' AND F.code > 0
