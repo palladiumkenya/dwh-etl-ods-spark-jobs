@@ -50,8 +50,7 @@ public class LoadPatientVisits {
                 .option("upperBound", "28742")
                 .option("numpartitions", rtConfig.get("spark.dwapicentral.numpartitions"))
                 .load();
-        int initialSourcePartitions = sourceDf.rdd().getNumPartitions();
-        logger.info("Initial source partitions is " + initialSourcePartitions);
+
         sourceDf.persist(StorageLevel.DISK_ONLY());
 
         // load lookup tables
@@ -61,7 +60,6 @@ public class LoadPatientVisits {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-//                .option("dbtable", "dbo.lkp_family_planning_method")
                 .option("query", "select source_name, target_name from dbo.lkp_family_planning_method")
                 .load();
         Dataset<Row> pwpDf = session.read()
@@ -70,7 +68,6 @@ public class LoadPatientVisits {
                 .option("driver", rtConfig.get("spark.ods.driver"))
                 .option("user", rtConfig.get("spark.ods.user"))
                 .option("password", rtConfig.get("spark.ods.password"))
-//                .option("dbtable", "dbo.lkp_pwp")
                 .option("query", "select source_name, target_name from dbo.lkp_pwp")
                 .load();
 
@@ -107,9 +104,6 @@ public class LoadPatientVisits {
                         .or(col("NextAppointmentDate").gt(lit(Date.valueOf(LocalDate.now().plusYears(1))))), lit(Date.valueOf(LocalDate.of(1900, 1, 1))))
                         .otherwise(col("NextAppointmentDate")));
 
-        int secondarySourcePartitions = sourceDf.rdd().getNumPartitions();
-        logger.info("Secondary source partitions is " + secondarySourcePartitions);
-
         //Set values from look up tables
         sourceDf = sourceDf
                 .join(familyPlanningDf, sourceDf.col("FamilyPlanningMethod").equalTo(familyPlanningDf.col("source_name")), "left")
@@ -119,8 +113,6 @@ public class LoadPatientVisits {
                 .withColumn("PwP", when(pwpDf.col("target_name").isNotNull(), pwpDf.col("target_name"))
                         .otherwise(col("PwP")));
 
-        int sourcePartitions = sourceDf.rdd().getNumPartitions();
-        logger.info("Source partitions are: " + sourcePartitions);
         logger.info("Loading target visits");
         Dataset<Row> targetDf = session.read()
                 .format("jdbc")
@@ -132,19 +124,16 @@ public class LoadPatientVisits {
                 .option("dbtable", "dbo.CT_PatientVisits")
                 .load();
 
-        int targetPartitions = targetDf.rdd().getNumPartitions();
-//        logger.info("Target partitions are: {}", targetPartitions);
         targetDf.persist(StorageLevel.DISK_ONLY());
         targetDf.createOrReplaceTempView("target_visits");
         sourceDf.createOrReplaceTempView("source_visits");
+
         sourceDf.printSchema();
 
-        // Get unmatched records
-        Dataset<Row> unmatchedFromJoinDf = session.sql("SELECT t.* FROM target_visits t LEFT ANTI JOIN source_visits s" +
+        // Get new records
+        Dataset<Row> newRecordsJoinDf = session.sql("SELECT s.* FROM source_visits s LEFT ANTI JOIN target_visits t" +
                 " ON s.PatientPK <=> t.PatientPK AND s.SiteCode <=> t.SiteCode AND s.VisitID <=> t.VisitID");
-        unmatchedFromJoinDf.createOrReplaceTempView("final_unmatched");
-
-        unmatchedFromJoinDf.printSchema();
+        newRecordsJoinDf.createOrReplaceTempView("new_records");
 
 
         final String columnList = "PatientID,FacilityName,SiteCode,PatientPK,VisitID,VisitDate,SERVICE,VisitType," +
@@ -155,16 +144,10 @@ public class LoadPatientVisits {
                 "ProphylaxisUsed,CTXAdherence,CurrentRegimen,HCWConcern,TCAReason,ClinicalNotes,ZScore," +
                 "ZScoreAbsolute,RefillDate,PaedsDisclosure,Date_Created,Date_Last_Modified,recorduuid,voided";
 
-        unmatchedFromJoinDf = session.sql(String.format("select %s from final_unmatched", columnList));
-        Dataset<Row> sourceMergeDf = session.sql(String.format("select %s from source_visits", columnList));
+        newRecordsJoinDf = session.sql(String.format("select %s from new_records", columnList));
 
-        Dataset<Row> dfMergeFinal = unmatchedFromJoinDf.union(sourceMergeDf);
-
-        long mergedFinalCount = dfMergeFinal.count();
-        logger.info("Merged final count: " + mergedFinalCount);
-
-//        dfMergeFinal = dfMergeFinal.withColumn("PatientPKHash", upper(sha2(col("PatientPK").cast(DataTypes.StringType), 256)))
-//                .withColumn("PatientIDHash", upper(sha2(col("PatientID").cast(DataTypes.StringType), 256)));
+        long mergedFinalCount = newRecordsJoinDf.count();
+        logger.info("New record count: " + mergedFinalCount);
 
         Properties connectionProperties = new Properties();
         connectionProperties.setProperty("dbURL", rtConfig.get("spark.ods.url"));
@@ -172,27 +155,7 @@ public class LoadPatientVisits {
         connectionProperties.setProperty("pass", rtConfig.get("spark.ods.password"));
         DatabaseUtils dbUtils = new DatabaseUtils(connectionProperties);
 
-        // backup target table
-        try {
-            dbUtils.renameTable("CT_PatientVisits", "CT_PatientVisits_bk");
-            logger.info("Successfully backed up CT_PatientVisits");
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new RuntimeException();
-        }
-
-        // recreate target tables
-        String ddlFileName = "PatientVisitsDDL.sql";
-        try {
-            String query = fileUtils.loadTextFromFile(LoadPatientVisits.class, ddlFileName);
-            dbUtils.runQuery(query);
-        } catch (IOException | SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(String.format("Failed to recreate %s table", ddlFileName));
-        }
-
-
-        dfMergeFinal
+        newRecordsJoinDf
                 .repartition(50)
                 .write()
                 .format("jdbc")
@@ -211,15 +174,6 @@ public class LoadPatientVisits {
         try {
             dbUtils.hashPIIColumns("CT_PatientVisits", hashColumns);
             logger.info("Successfully hashed PII columns");
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new RuntimeException();
-        }
-
-        // delete backup
-        try {
-            dbUtils.dropTable("CT_PatientVisits_bk");
-            logger.info("Successfully deleted CT_PatientVisits_bk");
         } catch (SQLException se) {
             se.printStackTrace();
             throw new RuntimeException();
